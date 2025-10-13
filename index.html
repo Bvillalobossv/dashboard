@@ -11,6 +11,7 @@
 </head>
 <body>
 
+    <!-- Pantalla de Inicio de Sesión -->
     <div id="login-screen" class="screen active">
         <div class="login-container">
             <div class="login-box">
@@ -33,6 +34,7 @@
         </div>
     </div>
 
+    <!-- Pantalla del Dashboard (inicialmente oculta) -->
     <div id="dashboard-screen" class="screen">
         <header>
             <img src="https://i.imgur.com/b2D83pl.png" alt="Logo SenseWell" class="logo-small">
@@ -44,6 +46,7 @@
         </header>
         <main>
             <div class="dashboard-grid">
+                <!-- Tarjetas de Resumen -->
                 <div class="card summary-card">
                     <h4>Índice General</h4>
                     <div id="general-score" class="score-circle">--</div>
@@ -65,11 +68,13 @@
                     <p>Promedio de reportes corporales</p>
                 </div>
 
+                <!-- Gráfico de Tendencias -->
                 <div class="card chart-card">
                     <h3>Tendencia de Bienestar Semanal</h3>
                     <canvas id="trend-chart"></canvas>
                 </div>
 
+                <!-- Lista Prioritaria -->
                 <div class="card list-card">
                     <div class="list-header">
                         <h3>Lista Prioritaria de Colaboradores</h3>
@@ -89,7 +94,8 @@
                                 </tr>
                             </thead>
                             <tbody id="priority-list-body">
-                                </tbody>
+                                <!-- Filas se insertarán aquí con JavaScript -->
+                            </tbody>
                         </table>
                     </div>
                 </div>

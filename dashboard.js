@@ -53,7 +53,7 @@ async function showDashboard(user) {
 }
 
 db.auth.onAuthStateChange((event, session) => {
-    if (session && session.user) {
+    if (session) {
         showDashboard(session.user);
     } else {
         showLogin();
@@ -63,19 +63,14 @@ db.auth.onAuthStateChange((event, session) => {
 // ===================== LÓGICA DEL DASHBOARD =====================
 
 async function loadDashboardData() {
-    console.log('Cargando datos del dashboard...');
     // 1. Obtener todos los perfiles y mediciones
     const { data: profiles, error: profilesError } = await db.from('profiles').select('*');
     const { data: measurements, error: measurementsError } = await db.from('measurements').select('*');
 
     if (profilesError || measurementsError) {
         console.error('Error al cargar datos:', profilesError || measurementsError);
-        alert('Error: No se pudieron cargar los datos. ¿Configuraste las políticas RLS para el rol de admin?');
         return;
     }
-    
-    console.log('Perfiles cargados:', profiles.length);
-    console.log('Mediciones cargadas:', measurements.length);
 
     // 2. Combinar los datos
     const combinedData = measurements.map(m => {
@@ -103,9 +98,9 @@ function renderSummaryCards(data, profiles) {
     // Índice General
     const totalScore = data.reduce((sum, m) => sum + m.combined_score, 0);
     const avgScore = totalScore / data.length;
-    generalScoreEl.textContent = `${Math.round(avgScore)}`;
+    generalScoreEl.textContent = `${Math.round(avgScore)}%`;
     const scoreColor = getRiskColor(100 - avgScore); // Invertimos el score para el color
-    generalScoreEl.style.background = scoreColor;
+    generalScoreEl.style.background = `linear-gradient(135deg, ${scoreColor}, ${shadeColor(scoreColor, -20)})`;
 
     // Colaboradores Activos
     const today = new Date().toISOString().slice(0, 10);
@@ -144,7 +139,7 @@ function renderTrendChart(data) {
             datasets: [{
                 label: 'Índice de Bienestar Promedio',
                 data: chartData,
-                borderColor: 'rgba(0, 123, 255, 1)',
+                borderColor: var(--primary-color),
                 backgroundColor: 'rgba(0, 123, 255, 0.1)',
                 fill: true,
                 tension: 0.3,
@@ -161,7 +156,6 @@ function renderTrendChart(data) {
 }
 
 function renderPriorityList(data) {
-    if (!data) return;
     // Agrupar por usuario y obtener la última medición de cada uno
     const latestMeasurements = Object.values(data.reduce((acc, m) => {
         if (!acc[m.user_id] || new Date(m.created_at) > new Date(acc[m.user_id].created_at)) {
@@ -182,22 +176,22 @@ function renderPriorityList(data) {
     // Renderizar
     priorityListBody.innerHTML = '';
     if (filteredList.length === 0) {
-        priorityListBody.innerHTML = `<tr><td colspan="3">No hay datos para mostrar.</td></tr>`;
+        priorityListBody.innerHTML = `<tr><td colspan="3">No hay datos para el departamento seleccionado.</td></tr>`;
         return;
     }
     
     filteredList.forEach(m => {
         const riskScore = 100 - m.combined_score;
-        const riskColorClass = getRiskColorClass(riskScore);
+        const riskColor = getRiskColor(riskScore);
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${m.username}</td>
             <td>
                 <div class="risk-bar">
-                    <div class="risk-bar-fill ${riskColorClass}" style="width: ${riskScore}%;"></div>
+                    <div class="risk-bar-fill" style="width: ${riskScore}%; background-color: ${riskColor};"></div>
                 </div>
             </td>
-            <td>${new Date(m.created_at).toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+            <td>${new Date(m.created_at).toLocaleString('es-CL')}</td>
         `;
         priorityListBody.appendChild(row);
     });
@@ -206,7 +200,7 @@ function renderPriorityList(data) {
 function populateDepartmentFilter(profiles) {
     const departments = [...new Set(profiles.map(p => p.department).filter(Boolean))];
     departmentFilter.innerHTML = '<option value="all">Todos los Departamentos</option>';
-    departments.sort().forEach(dep => {
+    departments.forEach(dep => {
         const option = document.createElement('option');
         option.value = dep;
         option.textContent = dep;
@@ -220,8 +214,23 @@ function getRiskColor(riskScore) {
     if (riskScore > 33) return 'var(--risk-medium)';
     return 'var(--risk-low)';
 }
-function getRiskColorClass(riskScore) {
-    if (riskScore > 66) return 'risk-high';
-    if (riskScore > 33) return 'risk-medium';
-    return 'risk-low';
+function shadeColor(color, percent) {
+    color = color.replace('var(','').replace(')','');
+    if (color.startsWith('--')) {
+        color = getComputedStyle(document.documentElement).getPropertyValue(color).trim();
+    }
+    let R = parseInt(color.substring(1,3),16);
+    let G = parseInt(color.substring(3,5),16);
+    let B = parseInt(color.substring(5,7),16);
+    R = parseInt(R * (100 + percent) / 100);
+    G = parseInt(G * (100 + percent) / 100);
+    B = parseInt(B * (100 + percent) / 100);
+    R = (R<255)?R:255;  
+    G = (G<255)?G:255;  
+    B = (B<255)?B:255;  
+    const RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16));
+    const GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16));
+    const BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16));
+    return "#"+RR+GG+BB;
 }
+
