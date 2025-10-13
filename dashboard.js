@@ -32,7 +32,6 @@ loginForm.addEventListener('submit', async (e) => {
     loginMessage.textContent = 'Ingresando...';
     loginMessage.className = 'message';
 
-    // Reconstruye el email "falso" para Supabase
     const email = `${username.toLowerCase().replace(/[^a-z0-9]/gi, '')}@example.com`;
 
     const { data, error } = await db.auth.signInWithPassword({ 
@@ -44,6 +43,7 @@ loginForm.addEventListener('submit', async (e) => {
         loginMessage.textContent = 'Error: Usuario o contraseña incorrectos.';
         loginMessage.className = 'message error';
     }
+    // El resto de la lógica la maneja onAuthStateChange
 });
 
 logoutButton.addEventListener('click', async () => {
@@ -65,23 +65,52 @@ async function showDashboard(user) {
     await loadDashboardData();
 }
 
+// --> CAMBIO: La lógica de verificación de admin ahora está aquí.
 db.auth.onAuthStateChange(async (event, session) => {
-    if (session && session.user) {
-        // VERIFICACIÓN DE ROL DE ADMIN
-        const { data: profile } = await db.from('profiles').select('role').eq('id', session.user.id).single();
-        if (profile && profile.role === 'admin') {
+    if (event === 'SIGNED_IN' && session) {
+        // 1. Cuando el usuario inicia sesión, PRIMERO verificamos su rol.
+        const { data: profile, error } = await db.from('profiles').select('role').eq('id', session.user.id).single();
+
+        if (error || !profile) {
+            console.error('Error fetching profile:', error);
+            await db.auth.signOut(); // Desloguear si hay error
+            loginMessage.textContent = 'Error al verificar perfil.';
+            loginMessage.className = 'message error';
+            return;
+        }
+
+        // 2. SOLO si el rol es 'admin', mostramos el dashboard.
+        if (profile.role === 'admin') {
             showDashboard(session.user);
         } else {
-            // Si no es admin, lo deslogueamos y mostramos un error
+            // 3. Si no es admin, lo deslogueamos y mostramos un error claro.
             await db.auth.signOut();
             loginMessage.textContent = 'Error: No tienes permisos de administrador.';
             loginMessage.className = 'message error';
-            showLogin();
         }
-    } else {
+    } else if (event === 'SIGNED_OUT') {
         showLogin();
     }
 });
+
+
+// Comprobar si ya hay una sesión activa al cargar la página
+async function checkInitialSession() {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+         const { data: profile } = await db.from('profiles').select('role').eq('id', session.user.id).single();
+         if (profile && profile.role === 'admin') {
+            showDashboard(session.user);
+         } else {
+            await db.auth.signOut();
+            showLogin();
+         }
+    } else {
+        showLogin();
+    }
+}
+checkInitialSession();
+
 
 // ===================== LÓGICA DEL DASHBOARD =====================
 
@@ -119,7 +148,13 @@ async function loadDashboardData() {
 }
 
 function renderSummaryCards(data, profiles) {
-    if (data.length === 0) return;
+    if (data.length === 0) {
+        generalScoreEl.textContent = 'N/A';
+        activeUsersEl.textContent = '0';
+        avgNoiseEl.textContent = 'N/A';
+        avgTensionEl.textContent = 'N/A';
+        return;
+    };
     const totalScore = data.reduce((sum, m) => sum + m.combined_score, 0);
     const avgScore = totalScore / data.length;
     generalScoreEl.textContent = `${Math.round(avgScore)}`;
@@ -234,3 +269,4 @@ function getRiskColorClass(riskScore) {
     if (riskScore > 33) return 'risk-medium';
     return 'risk-low';
 }
+
