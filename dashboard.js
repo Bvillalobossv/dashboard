@@ -9,7 +9,9 @@ const dashboardScreen = document.getElementById('dashboard-screen');
 const loginForm = document.getElementById('login-form');
 const loginMessage = document.getElementById('login-message');
 const logoutButton = document.getElementById('logout-button');
-const userEmailDisplay = document.getElementById('user-email');
+const userDisplay = document.getElementById('user-display');
+const loadingMessage = document.getElementById('loading-message');
+const dashboardContent = document.getElementById('dashboard-content');
 
 // Elementos del Dashboard
 const generalScoreEl = document.getElementById('general-score');
@@ -25,13 +27,21 @@ let trendChart = null;
 // ===================== LÓGICA DE AUTENTICACIÓN =====================
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = document.getElementById('email').value;
+    const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     loginMessage.textContent = 'Ingresando...';
     loginMessage.className = 'message';
-    const { data, error } = await db.auth.signInWithPassword({ email, password });
+
+    // Reconstruye el email "falso" para Supabase
+    const email = `${username.toLowerCase().replace(/[^a-z0-9]/gi, '')}@example.com`;
+
+    const { data, error } = await db.auth.signInWithPassword({ 
+        email: email, 
+        password: password 
+    });
+
     if (error) {
-        loginMessage.textContent = 'Error: Correo o contraseña incorrectos.';
+        loginMessage.textContent = 'Error: Usuario o contraseña incorrectos.';
         loginMessage.className = 'message error';
     }
 });
@@ -46,15 +56,28 @@ function showLogin() {
 }
 
 async function showDashboard(user) {
-    userEmailDisplay.textContent = user.email;
+    // Mostramos el nombre de usuario real en el header
+    const { data: profile } = await db.from('profiles').select('username').eq('id', user.id).single();
+    userDisplay.textContent = profile ? profile.username : user.email;
+
     loginScreen.classList.remove('active');
     dashboardScreen.classList.add('active');
     await loadDashboardData();
 }
 
-db.auth.onAuthStateChange((event, session) => {
-    if (session) {
-        showDashboard(session.user);
+db.auth.onAuthStateChange(async (event, session) => {
+    if (session && session.user) {
+        // VERIFICACIÓN DE ROL DE ADMIN
+        const { data: profile } = await db.from('profiles').select('role').eq('id', session.user.id).single();
+        if (profile && profile.role === 'admin') {
+            showDashboard(session.user);
+        } else {
+            // Si no es admin, lo deslogueamos y mostramos un error
+            await db.auth.signOut();
+            loginMessage.textContent = 'Error: No tienes permisos de administrador.';
+            loginMessage.className = 'message error';
+            showLogin();
+        }
     } else {
         showLogin();
     }
@@ -63,16 +86,21 @@ db.auth.onAuthStateChange((event, session) => {
 // ===================== LÓGICA DEL DASHBOARD =====================
 
 async function loadDashboardData() {
-    // 1. Obtener todos los perfiles y mediciones
+    loadingMessage.style.display = 'block';
+    dashboardContent.style.display = 'none';
+
     const { data: profiles, error: profilesError } = await db.from('profiles').select('*');
     const { data: measurements, error: measurementsError } = await db.from('measurements').select('*');
 
     if (profilesError || measurementsError) {
         console.error('Error al cargar datos:', profilesError || measurementsError);
+        loadingMessage.textContent = 'Error: No se pudieron cargar los datos. Verifica tus políticas RLS.';
         return;
     }
 
-    // 2. Combinar los datos
+    loadingMessage.style.display = 'none';
+    dashboardContent.style.display = 'grid';
+    
     const combinedData = measurements.map(m => {
         const profile = profiles.find(p => p.id === m.user_id);
         return {
@@ -82,32 +110,26 @@ async function loadDashboardData() {
         };
     });
 
-    // 3. Renderizar todos los componentes
     renderSummaryCards(combinedData, profiles);
     renderTrendChart(combinedData);
     renderPriorityList(combinedData);
     populateDepartmentFilter(profiles);
 
-    // 4. Añadir listener para el filtro
     departmentFilter.onchange = () => renderPriorityList(combinedData);
 }
 
 function renderSummaryCards(data, profiles) {
     if (data.length === 0) return;
-
-    // Índice General
     const totalScore = data.reduce((sum, m) => sum + m.combined_score, 0);
     const avgScore = totalScore / data.length;
-    generalScoreEl.textContent = `${Math.round(avgScore)}%`;
-    const scoreColor = getRiskColor(100 - avgScore); // Invertimos el score para el color
-    generalScoreEl.style.background = `linear-gradient(135deg, ${scoreColor}, ${shadeColor(scoreColor, -20)})`;
+    generalScoreEl.textContent = `${Math.round(avgScore)}`;
+    const scoreColor = getRiskColor(100 - avgScore);
+    generalScoreEl.style.background = scoreColor;
 
-    // Colaboradores Activos
     const today = new Date().toISOString().slice(0, 10);
     const activeIds = new Set(data.filter(m => m.created_at.slice(0, 10) === today).map(m => m.user_id));
     activeUsersEl.textContent = activeIds.size;
 
-    // Ruido y Tensión
     const avgNoise = data.reduce((sum, m) => sum + m.noise_db, 0) / data.length;
     const avgTension = data.reduce((sum, m) => sum + m.body_scan_avg, 0) / data.length;
     avgNoiseEl.textContent = `${Math.round(avgNoise)} dB`;
@@ -116,8 +138,6 @@ function renderSummaryCards(data, profiles) {
 
 function renderTrendChart(data) {
     if (data.length === 0) return;
-
-    // Agrupar scores por día
     const scoresByDay = data.reduce((acc, m) => {
         const day = m.created_at.slice(0, 10);
         if (!acc[day]) acc[day] = [];
@@ -139,7 +159,7 @@ function renderTrendChart(data) {
             datasets: [{
                 label: 'Índice de Bienestar Promedio',
                 data: chartData,
-                borderColor: var(--primary-color),
+                borderColor: 'rgba(0, 123, 255, 1)',
                 backgroundColor: 'rgba(0, 123, 255, 0.1)',
                 fill: true,
                 tension: 0.3,
@@ -156,42 +176,38 @@ function renderTrendChart(data) {
 }
 
 function renderPriorityList(data) {
-    // Agrupar por usuario y obtener la última medición de cada uno
+    if (!data) return;
     const latestMeasurements = Object.values(data.reduce((acc, m) => {
         if (!acc[m.user_id] || new Date(m.created_at) > new Date(acc[m.user_id].created_at)) {
             acc[m.user_id] = m;
         }
         return acc;
     }, {}));
-
-    // Ordenar por nivel de riesgo (score más bajo primero)
     latestMeasurements.sort((a, b) => a.combined_score - b.combined_score);
     
-    // Filtrar por departamento
     const selectedDepartment = departmentFilter.value;
     const filteredList = selectedDepartment === 'all'
         ? latestMeasurements
         : latestMeasurements.filter(m => m.department === selectedDepartment);
 
-    // Renderizar
     priorityListBody.innerHTML = '';
     if (filteredList.length === 0) {
-        priorityListBody.innerHTML = `<tr><td colspan="3">No hay datos para el departamento seleccionado.</td></tr>`;
+        priorityListBody.innerHTML = `<tr><td colspan="3">No hay datos para mostrar.</td></tr>`;
         return;
     }
     
     filteredList.forEach(m => {
         const riskScore = 100 - m.combined_score;
-        const riskColor = getRiskColor(riskScore);
+        const riskColorClass = getRiskColorClass(riskScore);
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${m.username}</td>
             <td>
                 <div class="risk-bar">
-                    <div class="risk-bar-fill" style="width: ${riskScore}%; background-color: ${riskColor};"></div>
+                    <div class="risk-bar-fill ${riskColorClass}" style="width: ${riskScore}%;"></div>
                 </div>
             </td>
-            <td>${new Date(m.created_at).toLocaleString('es-CL')}</td>
+            <td>${new Date(m.created_at).toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
         `;
         priorityListBody.appendChild(row);
     });
@@ -200,7 +216,7 @@ function renderPriorityList(data) {
 function populateDepartmentFilter(profiles) {
     const departments = [...new Set(profiles.map(p => p.department).filter(Boolean))];
     departmentFilter.innerHTML = '<option value="all">Todos los Departamentos</option>';
-    departments.forEach(dep => {
+    departments.sort().forEach(dep => {
         const option = document.createElement('option');
         option.value = dep;
         option.textContent = dep;
@@ -208,29 +224,13 @@ function populateDepartmentFilter(profiles) {
     });
 }
 
-// --- Funciones de Utilidad ---
 function getRiskColor(riskScore) {
     if (riskScore > 66) return 'var(--risk-high)';
     if (riskScore > 33) return 'var(--risk-medium)';
     return 'var(--risk-low)';
 }
-function shadeColor(color, percent) {
-    color = color.replace('var(','').replace(')','');
-    if (color.startsWith('--')) {
-        color = getComputedStyle(document.documentElement).getPropertyValue(color).trim();
-    }
-    let R = parseInt(color.substring(1,3),16);
-    let G = parseInt(color.substring(3,5),16);
-    let B = parseInt(color.substring(5,7),16);
-    R = parseInt(R * (100 + percent) / 100);
-    G = parseInt(G * (100 + percent) / 100);
-    B = parseInt(B * (100 + percent) / 100);
-    R = (R<255)?R:255;  
-    G = (G<255)?G:255;  
-    B = (B<255)?B:255;  
-    const RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16));
-    const GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16));
-    const BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16));
-    return "#"+RR+GG+BB;
+function getRiskColorClass(riskScore) {
+    if (riskScore > 66) return 'risk-high';
+    if (riskScore > 33) return 'risk-medium';
+    return 'risk-low';
 }
-
