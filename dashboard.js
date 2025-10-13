@@ -42,12 +42,15 @@ loginForm.addEventListener('submit', async (e) => {
     if (error) {
         loginMessage.textContent = 'Error: Usuario o contraseña incorrectos.';
         loginMessage.className = 'message error';
+    } else {
+        // Si el login es exitoso, manejamos la sesión
+        handleSession(data.session);
     }
-    // El resto de la lógica la maneja onAuthStateChange
 });
 
 logoutButton.addEventListener('click', async () => {
     await db.auth.signOut();
+    showLogin();
 });
 
 function showLogin() {
@@ -56,7 +59,6 @@ function showLogin() {
 }
 
 async function showDashboard(user) {
-    // Mostramos el nombre de usuario real en el header
     const { data: profile } = await db.from('profiles').select('username').eq('id', user.id).single();
     userDisplay.textContent = profile ? profile.username : user.email;
 
@@ -65,51 +67,28 @@ async function showDashboard(user) {
     await loadDashboardData();
 }
 
-// --> CAMBIO: La lógica de verificación de admin ahora está aquí.
-db.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-        // 1. Cuando el usuario inicia sesión, PRIMERO verificamos su rol.
-        const { data: profile, error } = await db.from('profiles').select('role').eq('id', session.user.id).single();
-
-        if (error || !profile) {
-            console.error('Error fetching profile:', error);
-            await db.auth.signOut(); // Desloguear si hay error
-            loginMessage.textContent = 'Error al verificar perfil.';
-            loginMessage.className = 'message error';
-            return;
-        }
-
-        // 2. SOLO si el rol es 'admin', mostramos el dashboard.
-        if (profile.role === 'admin') {
+// --> CAMBIO: Lógica de sesión centralizada
+async function handleSession(session) {
+    if (session && session.user) {
+        const { data: profile } = await db.from('profiles').select('role').eq('id', session.user.id).single();
+        if (profile && profile.role === 'admin') {
             showDashboard(session.user);
         } else {
-            // 3. Si no es admin, lo deslogueamos y mostramos un error claro.
             await db.auth.signOut();
             loginMessage.textContent = 'Error: No tienes permisos de administrador.';
             loginMessage.className = 'message error';
-        }
-    } else if (event === 'SIGNED_OUT') {
-        showLogin();
-    }
-});
-
-
-// Comprobar si ya hay una sesión activa al cargar la página
-async function checkInitialSession() {
-    const { data: { session } } = await db.auth.getSession();
-    if (session) {
-         const { data: profile } = await db.from('profiles').select('role').eq('id', session.user.id).single();
-         if (profile && profile.role === 'admin') {
-            showDashboard(session.user);
-         } else {
-            await db.auth.signOut();
             showLogin();
-         }
+        }
     } else {
         showLogin();
     }
 }
-checkInitialSession();
+
+// Comprobar la sesión inicial solo una vez al cargar la página
+document.addEventListener('DOMContentLoaded', async () => {
+    const { data: { session } } = await db.auth.getSession();
+    handleSession(session);
+});
 
 
 // ===================== LÓGICA DEL DASHBOARD =====================
@@ -269,4 +248,3 @@ function getRiskColorClass(riskScore) {
     if (riskScore > 33) return 'risk-medium';
     return 'risk-low';
 }
-
