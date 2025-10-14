@@ -97,7 +97,6 @@ function applyFiltersAndRender() {
 // --- LÓGICA DE RENDERIZADO ---
 
 function renderPriorityList(data) {
-    // (Código sin cambios)
     const processedData = data.map(user => {
         let riskLevel = 'bajo';
         let riskScore = 100;
@@ -140,7 +139,6 @@ function renderPriorityList(data) {
 }
 
 function renderRiskMap(data) {
-    // (Código sin cambios)
     const departments = {};
     data.forEach(user => {
         const dept = user.department || 'Sin Área';
@@ -185,7 +183,6 @@ function renderGeneralReport(data) {
         });
     });
 
-    // Gráfico de Distribución de Riesgo
     const riskCtx = document.getElementById('risk-distribution-chart').getContext('2d');
     if (riskDistributionChart) riskDistributionChart.destroy();
     riskDistributionChart = new Chart(riskCtx, {
@@ -194,14 +191,12 @@ function renderGeneralReport(data) {
             labels: ['Riesgo Alto', 'Riesgo Medio', 'Riesgo Bajo'],
             datasets: [{
                 data: [riskCounts.alto, riskCounts.medio, riskCounts.bajo],
-                // CORRECCIÓN: Se usan los colores directos en lugar de variables CSS
                 backgroundColor: ['#ef4444', '#f59e0b', '#22c55e']
             }]
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
     });
 
-    // Gráfico de Tendencia de Bienestar (código sin cambios)
     const trendLabels = Object.keys(trendData).sort((a,b) => new Date(a) - new Date(b));
     const trendScores = trendLabels.map(label => {
         const dayData = trendData[label];
@@ -221,33 +216,31 @@ function renderGeneralReport(data) {
 
 // --- LÓGICA DE INTERACTIVIDAD Y PERFIL INDIVIDUAL ---
 
-// NUEVO: Función para generar sugerencias de gamificación
+// **** NUEVA FUNCIÓN DE GAMIFICACIÓN MEJORADA ****
 function generateGamificationSuggestion(user) {
     const m = user.latestMeasurement;
     if (!m) return "No hay suficientes datos para una sugerencia.";
-    
-    // Prioridad 1: Estrés muy alto
-    if (m.stress_level > 8) {
-        return "Nivel de estrés muy alto detectado. Sugerencia: Promover una 'Pausa Activa Guiada' de 5 minutos. Enfocarse en ejercicios de respiración.";
+
+    const score = m.combined_score;
+
+    // Caso 1: Riesgo Alto (score < 40)
+    if (score < 40) {
+        if (m.stress_level > 7) return "Estrés alto detectado. Sugerencia: Organizar una sesión de mindfulness o respiración guiada de 5 minutos.";
+        if (m.face_emotion === 'angry' || m.face_emotion === 'sad') return "Estado anímico bajo. Sugerencia: Proponer una breve caminata de 10 minutos para despejar la mente.";
+        if (m.body_scan_avg > 6) return "Alta tensión corporal. Sugerencia: Facilitar una pausa para estiramientos de cuello y espalda.";
+        return "Riesgo alto general. Sugerencia: Iniciar una conversación 1-a-1 para entender el contexto y ofrecer apoyo directo.";
+    } 
+    // Caso 2: Riesgo Medio (40 <= score < 65)
+    else if (score < 65) {
+        if (m.workload_level > 7) return "Alta carga de trabajo reportada. Sugerencia: Revisar la priorización de tareas y ofrecer ayuda para delegar.";
+        if (m.noise_db > 65) return "Ambiente ruidoso. Sugerencia: Recordar la disponibilidad de zonas silenciosas o el uso de auriculares.";
+        return "Riesgo moderado. Sugerencia: Iniciar una conversación de feedback breve para identificar posibles puntos de fricción y prevenir que escale.";
     }
-    // Prioridad 2: Emoción negativa fuerte
-    if (m.face_emotion === 'angry' || m.face_emotion === 'sad') {
-        return "Se detectó un estado anímico bajo. Sugerencia: Una breve caminata de 10 minutos al aire libre puede mejorar significativamente el ánimo.";
+    // Caso 3: Riesgo Bajo (score >= 65)
+    else {
+        if (score > 85) return "¡Excelente estado de bienestar! Sugerencia: Felicitar al colaborador y reconocer públicamente su buen desempeño y actitud.";
+        return "¡Buen nivel de bienestar! Sugerencia: Animar al colaborador a mantener sus hábitos y a compartir lo que le funciona con el resto del equipo.";
     }
-    // Prioridad 3: Tensión corporal alta
-    if (m.body_scan_avg > 7) {
-        return "Tensión corporal elevada. Sugerencia: Recomendar una sesión de 'Estiramientos de Escritorio'. Enfocarse en cuello y hombros.";
-    }
-     // Prioridad 4: Ambiente ruidoso
-    if (m.noise_db > 70) {
-        return "El ambiente acústico es muy ruidoso. Sugerencia: Facilitar el uso de auriculares con cancelación de ruido o el acceso a una zona silenciosa.";
-    }
-    // Positivo: Si todo está bien
-    if (m.combined_score > 80) {
-        return "¡Excelente estado de bienestar! Sugerencia: Reconocer su buen estado y animarle a compartir qué le está funcionando con su equipo.";
-    }
-    // Sugerencia general
-    return "El colaborador muestra un nivel de riesgo moderado. Sugerencia: Iniciar una conversación de feedback breve para identificar posibles puntos de fricción.";
 }
 
 priorityListContainer.addEventListener('click', (e) => {
@@ -280,7 +273,6 @@ async function openProfileModal(user) {
     document.getElementById('modal-username').textContent = `Perfil de ${user.username}`;
     document.getElementById('btn-save-note').dataset.employeeId = user.id;
     
-    // NUEVO: Generar y mostrar la gamificación
     const suggestion = generateGamificationSuggestion(user);
     document.getElementById('gamification-suggestion').textContent = suggestion;
 
