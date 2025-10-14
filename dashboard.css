@@ -5,9 +5,9 @@
     --text-dark: #1e293b;
     --text-light: #64748b;
     --border-color: #e2e8f0;
-    --danger: #dc2626;
+    --danger: #ef4444;
     --warning: #f59e0b;
-    --success: #16a34a;
+    --success: #22c55e;
 }
 * { box-sizing: border-box; }
 body {
@@ -61,86 +61,45 @@ input:checked + .slider:before { transform: translateX(20px); }
 .slider.round { border-radius: 34px; }
 .slider.round:before { border-radius: 50%; }
 
-/* --- NUEVO: Estilos para la Ventana Modal --- */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    opacity: 1;
-    transition: opacity 0.3s ease;
-}
-.modal-overlay.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-.modal-content {
-    background-color: var(--background);
-    padding: 2rem;
-    border-radius: 16px;
-    width: 90%;
-    max-width: 900px;
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
-}
-.modal-close-btn {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: none;
-    border: none;
-    font-size: 2rem;
-    color: var(--text-light);
-    cursor: pointer;
-}
-.profile-grid {
+/* Estilos para la Ventana Modal */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 1; transition: opacity 0.3s ease; }
+.modal-overlay.hidden { opacity: 0; pointer-events: none; }
+.modal-content { background-color: var(--background); padding: 2rem; border-radius: 16px; width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; position: relative; }
+.modal-close-btn { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 2rem; color: var(--text-light); cursor: pointer; }
+.profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+.profile-card { background-color: var(--card-bg); padding: 1.5rem; border-radius: 12px; }
+.chart-card { grid-column: 1 / -1; }
+.history-item { border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem; }
+.history-item:last-child { border-bottom: none; margin-bottom: 0; }
+.history-item strong { font-size: 0.9rem; color: var(--text-light); }
+.history-item p { margin: 0.5rem 0 0 0; font-style: italic; }
+#hr-notes-history { max-height: 200px; overflow-y: auto; margin-bottom: 1rem; }
+#hr-new-note { width: 100%; min-height: 80px; margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; }
+
+/* --- NUEVO: Estilos para el Mapa de Riesgo --- */
+#risk-map-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
     margin-top: 1.5rem;
 }
-.profile-card {
-    background-color: var(--card-bg);
-    padding: 1.5rem;
-    border-radius: 12px;
-}
-.chart-card {
-    grid-column: 1 / -1; /* El gráfico ocupa todo el ancho */
-}
-.history-item {
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
-}
-.history-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-.history-item strong {
-    font-size: 0.9rem;
-    color: var(--text-light);
-}
-.history-item p {
-    margin: 0.5rem 0 0 0;
-    font-style: italic;
-}
-#hr-notes-history {
-    max-height: 200px;
-    overflow-y: auto;
-    margin-bottom: 1rem;
-}
-#hr-new-note {
-    width: 100%;
-    min-height: 80px;
-    margin-bottom: 1rem;
+.map-area {
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+.map-area:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.07);
+}
+.map-area.risk-alto { background-color: rgba(239, 68, 68, 0.1); border-left: 5px solid var(--danger); }
+.map-area.risk-medio { background-color: rgba(245, 158, 11, 0.1); border-left: 5px solid var(--warning); }
+.map-area.risk-bajo { background-color: rgba(34, 197, 94, 0.1); border-left: 5px solid var(--success); }
+
+.map-area h4 { margin: 0 0 0.5rem 0; font-size: 1rem; }
+.map-area p { margin: 0; font-size: 0.8rem; color: var(--text-light); }
+.map-area .score { font-weight: 700; font-size: 1.2rem; color: var(--text-dark); }

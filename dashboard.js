@@ -10,9 +10,10 @@ const formAdminLogin = document.getElementById('formAdminLogin');
 const btnSignOut = document.getElementById('btnSignOut');
 const loginMessage = document.getElementById('login-message');
 const priorityListContainer = document.getElementById('priority-list-container');
+const riskMapContainer = document.getElementById('risk-map-container'); // Nuevo selector
 const modalProfile = document.getElementById('modal-profile');
 
-let evolutionChart = null; // Variable global para el gráfico
+let evolutionChart = null;
 
 // --- Lógica de Autenticación ---
 formAdminLogin.addEventListener('submit', async (e) => {
@@ -21,7 +22,6 @@ formAdminLogin.addEventListener('submit', async (e) => {
     const password = document.getElementById('admin_pass').value;
     loginMessage.textContent = 'Ingresando...';
     const email = `${username.toLowerCase()}@raizen.app`;
-
     try {
         const { error } = await db.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -33,17 +33,14 @@ formAdminLogin.addEventListener('submit', async (e) => {
 btnSignOut.addEventListener('click', () => db.auth.signOut());
 
 db.auth.onAuthStateChange((event, session) => {
-    if (session && session.user) {
-        onLoggedIn(session.user);
-    } else {
-        onLoggedOut();
-    }
+    if (session && session.user) onLoggedIn(session.user);
+    else onLoggedOut();
 });
 
 function onLoggedIn(user) {
     screenLogin.classList.remove('active');
     screenDashboard.classList.add('active');
-    fetchAndDisplayPriorityList(); 
+    loadDashboardData(); // Función única para cargar todos los datos
 }
 
 function onLoggedOut() {
@@ -51,9 +48,11 @@ function onLoggedOut() {
     screenLogin.classList.add('active');
 }
 
-// --- FASE 2: LÓGICA DE LA LISTA PRIORITARIA ---
-async function fetchAndDisplayPriorityList() {
-    priorityListContainer.innerHTML = '<p>Cargando datos de colaboradores...</p>';
+// --- LÓGICA DE CARGA DE DATOS (REFACTORIZADO) ---
+async function loadDashboardData() {
+    priorityListContainer.innerHTML = '<p>Cargando datos...</p>';
+    riskMapContainer.innerHTML = '<p>Calculando riesgos...</p>';
+    
     try {
         const { data: profiles, error: profilesError } = await db.from('profiles').select('*');
         if (profilesError) throw profilesError;
@@ -65,29 +64,34 @@ async function fetchAndDisplayPriorityList() {
             const userMeasurements = measurements
                 .filter(m => m.user_id_uuid === profile.id)
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            
             return { ...profile, latestMeasurement: userMeasurements[0] || null };
         });
 
-        const processedData = combinedData.map(user => {
-            let riskLevel = 'bajo';
-            let riskScore = 100;
-            if (user.latestMeasurement) {
-                riskScore = user.latestMeasurement.combined_score;
-                if (riskScore < 40) riskLevel = 'alto';
-                else if (riskScore < 65) riskLevel = 'medio';
-            }
-            return { ...user, riskLevel, riskScore };
-        }).sort((a, b) => a.riskScore - b.riskScore);
+        // Una vez cargados los datos, renderizamos ambos componentes
+        renderPriorityList(combinedData);
+        renderRiskMap(combinedData);
 
-        renderPriorityList(processedData);
     } catch (error) {
         priorityListContainer.innerHTML = `<p class="error-message">No se pudieron cargar los datos.</p>`;
+        riskMapContainer.innerHTML = `<p class="error-message">Error al calcular riesgos.</p>`;
     }
 }
 
+// --- LÓGICA DE RENDERIZADO ---
+
 function renderPriorityList(data) {
-    if (data.length === 0) {
+    const processedData = data.map(user => {
+        let riskLevel = 'bajo';
+        let riskScore = 100;
+        if (user.latestMeasurement) {
+            riskScore = user.latestMeasurement.combined_score;
+            if (riskScore < 40) riskLevel = 'alto';
+            else if (riskScore < 65) riskLevel = 'medio';
+        }
+        return { ...user, riskLevel, riskScore };
+    }).sort((a, b) => a.riskScore - b.riskScore);
+
+    if (processedData.length === 0) {
         priorityListContainer.innerHTML = '<p>No hay datos de trabajadores para mostrar.</p>';
         return;
     }
@@ -103,9 +107,9 @@ function renderPriorityList(data) {
                 </tr>
             </thead>
             <tbody>
-                ${data.map(user => `
+                ${processedData.map(user => `
                     <tr data-user-id="${user.id}" data-username="${user.username}">
-                        <td>${user.username || 'Usuario sin nombre'}</td>
+                        <td>${user.username || 'N/A'}</td>
                         <td><div class="risk-bar-container"><div class="risk-bar ${user.riskLevel}" style="width: ${100 - user.riskScore}%"></div></div></td>
                         <td>${user.latestMeasurement ? new Date(user.latestMeasurement.created_at).toLocaleString('es-CL') : 'N/A'}</td>
                         <td class="contact-icons"><span>📞</span><span>✉️</span><span>💬</span></td>
@@ -117,7 +121,45 @@ function renderPriorityList(data) {
     priorityListContainer.innerHTML = tableHTML;
 }
 
-// --- FASE 3: LÓGICA DEL PERFIL INDIVIDUAL ---
+// NUEVO: Función para renderizar el Mapa de Riesgo
+function renderRiskMap(data) {
+    const departments = {};
+
+    data.forEach(user => {
+        const dept = user.department || 'Sin Área';
+        if (!user.latestMeasurement) return; // Omitir usuarios sin mediciones
+
+        if (!departments[dept]) {
+            departments[dept] = { scores: [], userCount: 0 };
+        }
+        departments[dept].scores.push(user.latestMeasurement.combined_score);
+        departments[dept].userCount++;
+    });
+
+    if (Object.keys(departments).length === 0) {
+        riskMapContainer.innerHTML = '<p>No hay datos de departamentos para mostrar.</p>';
+        return;
+    }
+    
+    let mapHTML = '';
+    for (const deptName in departments) {
+        const avgScore = departments[deptName].scores.reduce((a, b) => a + b, 0) / departments[deptName].scores.length;
+        let riskLevel = 'bajo';
+        if (avgScore < 40) riskLevel = 'alto';
+        else if (avgScore < 65) riskLevel = 'medio';
+        
+        mapHTML += `
+            <div class="map-area ${'risk-' + riskLevel}">
+                <h4>${deptName}</h4>
+                <p class="score">${Math.round(avgScore)}</p>
+                <p>${departments[deptName].userCount} colaborador(es)</p>
+            </div>
+        `;
+    }
+    riskMapContainer.innerHTML = mapHTML;
+}
+
+// --- LÓGICA DEL PERFIL INDIVIDUAL ---
 priorityListContainer.addEventListener('click', (e) => {
     const row = e.target.closest('tr');
     if (row && row.dataset.userId) {
@@ -127,32 +169,21 @@ priorityListContainer.addEventListener('click', (e) => {
 
 modalProfile.querySelector('.modal-close-btn').addEventListener('click', () => {
     modalProfile.classList.add('hidden');
-    if (evolutionChart) {
-        evolutionChart.destroy(); // Destruir el gráfico para liberar memoria
-    }
+    if (evolutionChart) evolutionChart.destroy();
 });
 
 async function openProfileModal(userId, username) {
     document.getElementById('modal-username').textContent = `Perfil de ${username}`;
-    const btnSaveNote = document.getElementById('btn-save-note');
-    btnSaveNote.dataset.employeeId = userId; // Guardar el ID para usarlo al guardar la nota
-
+    document.getElementById('btn-save-note').dataset.employeeId = userId;
     modalProfile.classList.remove('hidden');
 
     try {
-        // Cargar mediciones para el gráfico y el historial
-        const { data: measurements, error: mError } = await db.from('measurements')
-            .select('created_at, combined_score, journal_entry')
-            .eq('user_id_uuid', userId)
-            .order('created_at', { ascending: true }); // Ascendente para el gráfico
+        const { data: measurements, error: mError } = await db.from('measurements').select('created_at, combined_score, journal_entry').eq('user_id_uuid', userId).order('created_at', { ascending: true });
         if (mError) throw mError;
         
         renderEvolutionChart(measurements);
         renderJournalHistory(measurements);
-        
-        // Cargar y mostrar las notas de RRHH
         await fetchAndRenderHrNotes(userId);
-
     } catch (error) {
         console.error("Error al cargar datos del perfil:", error);
     }
@@ -162,23 +193,12 @@ function renderEvolutionChart(measurements) {
     const ctx = document.getElementById('evolution-chart').getContext('2d');
     const labels = measurements.map(m => new Date(m.created_at).toLocaleDateString('es-CL'));
     const data = measurements.map(m => m.combined_score);
-
-    if (evolutionChart) {
-        evolutionChart.destroy();
-    }
-
+    if (evolutionChart) evolutionChart.destroy();
     evolutionChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels,
-            datasets: [{
-                label: 'Índice de Equilibrio',
-                data: data,
-                borderColor: 'var(--primary-blue)',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                fill: true,
-                tension: 0.3
-            }]
+            labels,
+            datasets: [{ label: 'Índice de Equilibrio', data, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true, tension: 0.3 }]
         },
         options: { scales: { y: { beginAtZero: true, max: 100 } } }
     });
@@ -186,42 +206,24 @@ function renderEvolutionChart(measurements) {
 
 function renderJournalHistory(measurements) {
     const container = document.getElementById('journal-history');
-    const validEntries = measurements.filter(m => m.journal_entry).reverse(); // Invertir para mostrar lo más nuevo primero
-    
+    const validEntries = measurements.filter(m => m.journal_entry).reverse();
     if(validEntries.length === 0) {
         container.innerHTML = '<p class="placeholder-text">Sin entradas en el diario.</p>';
         return;
     }
-    
-    container.innerHTML = validEntries.map(m => `
-        <div class="history-item">
-            <strong>${new Date(m.created_at).toLocaleString('es-CL')}</strong>
-            <p>"${m.journal_entry}"</p>
-        </div>
-    `).join('');
+    container.innerHTML = validEntries.map(m => `<div class="history-item"><strong>${new Date(m.created_at).toLocaleString('es-CL')}</strong><p>"${m.journal_entry}"</p></div>`).join('');
 }
 
 async function fetchAndRenderHrNotes(employeeId) {
     const container = document.getElementById('hr-notes-history');
     try {
-        const { data: notes, error } = await db.from('hr_notes')
-            .select('*, admin:admin_id(profiles(username))') // Asumimos que los admins también tienen perfil
-            .eq('employee_id', employeeId)
-            .order('created_at', { ascending: false });
-
+        const { data: notes, error } = await db.from('hr_notes').select('*, admin:admin_id(profiles(username))').eq('employee_id', employeeId).order('created_at', { ascending: false });
         if (error) throw error;
-
         if(notes.length === 0) {
             container.innerHTML = '<p class="placeholder-text">Sin notas para este colaborador.</p>';
             return;
         }
-
-        container.innerHTML = notes.map(n => `
-            <div class="history-item">
-                <strong>${new Date(n.created_at).toLocaleString('es-CL')}</strong>
-                <p>${n.note_text}</p>
-            </div>
-        `).join('');
+        container.innerHTML = notes.map(n => `<div class="history-item"><strong>${new Date(n.created_at).toLocaleString('es-CL')}</strong><p>${n.note_text}</p></div>`).join('');
     } catch (error) {
         container.innerHTML = '<p class="error-message">No se pudieron cargar las notas.</p>';
     }
@@ -231,21 +233,13 @@ document.getElementById('btn-save-note').addEventListener('click', async (e) => 
     const employeeId = e.target.dataset.employeeId;
     const noteText = document.getElementById('hr-new-note').value.trim();
     const { data: { user } } = await db.auth.getUser();
-
     if (!noteText || !employeeId || !user) return;
-    
     try {
-        const { error } = await db.from('hr_notes').insert({
-            employee_id: employeeId,
-            admin_id: user.id,
-            note_text: noteText
-        });
+        const { error } = await db.from('hr_notes').insert({ employee_id: employeeId, admin_id: user.id, note_text: noteText });
         if (error) throw error;
-
-        document.getElementById('hr-new-note').value = ''; // Limpiar el textarea
-        await fetchAndRenderHrNotes(employeeId); // Recargar las notas
+        document.getElementById('hr-new-note').value = '';
+        await fetchAndRenderHrNotes(employeeId);
     } catch (error) {
-        console.error("Error al guardar la nota:", error);
         alert("No se pudo guardar la nota.");
     }
 });
