@@ -22,7 +22,7 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .hidden { display: none !important; }
 
-/* Estilos del Login */
+/* Estilos del Login ... */
 .login-container { max-width: 400px; margin: 8rem auto; padding: 2rem; background-color: var(--card-bg); border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
 .logo-text { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 2.5rem; color: #70755D; margin-bottom: 0.5rem; }
 .login-container h2 { font-size: 1.5rem; margin: 0 0 0.5rem 0; }
@@ -40,12 +40,8 @@ body {
 .card h3 { margin-top: 0; }
 #priority-list-card { grid-column: 1 / 3; }
 .placeholder-text { color: var(--text-light); font-style: italic;}
-
-/* Filtros */
 .filters { margin-bottom: 1rem; }
 .btn-filter { background-color: var(--primary-blue); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
-
-/* Estilos de la Tabla Prioritaria */
 .priority-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
 .priority-table th, .priority-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
 .priority-table th { color: var(--text-light); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
@@ -96,3 +92,12 @@ input:checked + .slider:before { transform: translateX(20px); }
 .history-item p { margin: 0.5rem 0 0 0; font-style: italic; }
 #hr-notes-history { max-height: 200px; overflow-y: auto; margin-bottom: 1rem; }
 #hr-new-note { width: 100%; min-height: 80px; margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; }
+
+/* NUEVO: Estilos para la tarjeta de Gamificación */
+.gamification-card {
+    background-color: #eef2ff; /* Un color suave para destacar */
+    border-left: 5px solid var(--primary-blue);
+}
+.gamification-card h4 {
+    color: var(--primary-blue);
+}

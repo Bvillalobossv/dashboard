@@ -15,7 +15,7 @@ const modalProfile = document.getElementById('modal-profile');
 const showAllBtn = document.getElementById('show-all-btn');
 
 let evolutionChart, riskDistributionChart, wellbeingTrendChart = null;
-let allCollaboratorsData = []; // Guardaremos todos los datos aquí
+let allCollaboratorsData = [];
 let currentFilter = { department: 'All' };
 
 // --- Lógica de Autenticación ---
@@ -97,6 +97,7 @@ function applyFiltersAndRender() {
 // --- LÓGICA DE RENDERIZADO ---
 
 function renderPriorityList(data) {
+    // (Código sin cambios)
     const processedData = data.map(user => {
         let riskLevel = 'bajo';
         let riskScore = 100;
@@ -112,7 +113,6 @@ function renderPriorityList(data) {
         priorityListContainer.innerHTML = `<p>No hay trabajadores en el área seleccionada.</p>`;
         return;
     }
-
     const tableHTML = `
         <table class="priority-table">
             <thead>
@@ -140,6 +140,7 @@ function renderPriorityList(data) {
 }
 
 function renderRiskMap(data) {
+    // (Código sin cambios)
     const departments = {};
     data.forEach(user => {
         const dept = user.department || 'Sin Área';
@@ -178,7 +179,7 @@ function renderGeneralReport(data) {
             else riskCounts.bajo++;
         }
         user.allMeasurements.forEach(m => {
-            const date = new Date(m.created_at).toISOString().split('T')[0]; // Agrupar por día
+            const date = new Date(m.created_at).toISOString().split('T')[0];
             if (!trendData[date]) trendData[date] = { scores: [] };
             trendData[date].scores.push(m.combined_score);
         });
@@ -193,41 +194,67 @@ function renderGeneralReport(data) {
             labels: ['Riesgo Alto', 'Riesgo Medio', 'Riesgo Bajo'],
             datasets: [{
                 data: [riskCounts.alto, riskCounts.medio, riskCounts.bajo],
-                backgroundColor: ['var(--danger)', 'var(--warning)', 'var(--success)']
+                // CORRECCIÓN: Se usan los colores directos en lugar de variables CSS
+                backgroundColor: ['#ef4444', '#f59e0b', '#22c55e']
             }]
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
     });
 
-    // Gráfico de Tendencia de Bienestar
+    // Gráfico de Tendencia de Bienestar (código sin cambios)
     const trendLabels = Object.keys(trendData).sort((a,b) => new Date(a) - new Date(b));
     const trendScores = trendLabels.map(label => {
         const dayData = trendData[label];
         return dayData.scores.reduce((a,b) => a+b, 0) / dayData.scores.length;
     });
-    
     const trendCtx = document.getElementById('wellbeing-trend-chart').getContext('2d');
     if (wellbeingTrendChart) wellbeingTrendChart.destroy();
     wellbeingTrendChart = new Chart(trendCtx, {
         type: 'line',
         data: {
             labels: trendLabels,
-            datasets: [{
-                label: 'Bienestar Promedio',
-                data: trendScores,
-                borderColor: 'var(--primary-blue)',
-                tension: 0.1
-            }]
+            datasets: [{ label: 'Bienestar Promedio', data: trendScores, borderColor: 'var(--primary-blue)', tension: 0.1 }]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
     });
 }
 
-// --- LÓGICA DE INTERACTIVIDAD ---
+// --- LÓGICA DE INTERACTIVIDAD Y PERFIL INDIVIDUAL ---
+
+// NUEVO: Función para generar sugerencias de gamificación
+function generateGamificationSuggestion(user) {
+    const m = user.latestMeasurement;
+    if (!m) return "No hay suficientes datos para una sugerencia.";
+    
+    // Prioridad 1: Estrés muy alto
+    if (m.stress_level > 8) {
+        return "Nivel de estrés muy alto detectado. Sugerencia: Promover una 'Pausa Activa Guiada' de 5 minutos. Enfocarse en ejercicios de respiración.";
+    }
+    // Prioridad 2: Emoción negativa fuerte
+    if (m.face_emotion === 'angry' || m.face_emotion === 'sad') {
+        return "Se detectó un estado anímico bajo. Sugerencia: Una breve caminata de 10 minutos al aire libre puede mejorar significativamente el ánimo.";
+    }
+    // Prioridad 3: Tensión corporal alta
+    if (m.body_scan_avg > 7) {
+        return "Tensión corporal elevada. Sugerencia: Recomendar una sesión de 'Estiramientos de Escritorio'. Enfocarse en cuello y hombros.";
+    }
+     // Prioridad 4: Ambiente ruidoso
+    if (m.noise_db > 70) {
+        return "El ambiente acústico es muy ruidoso. Sugerencia: Facilitar el uso de auriculares con cancelación de ruido o el acceso a una zona silenciosa.";
+    }
+    // Positivo: Si todo está bien
+    if (m.combined_score > 80) {
+        return "¡Excelente estado de bienestar! Sugerencia: Reconocer su buen estado y animarle a compartir qué le está funcionando con su equipo.";
+    }
+    // Sugerencia general
+    return "El colaborador muestra un nivel de riesgo moderado. Sugerencia: Iniciar una conversación de feedback breve para identificar posibles puntos de fricción.";
+}
+
 priorityListContainer.addEventListener('click', (e) => {
     const row = e.target.closest('tr');
     if (row && row.dataset.userId) {
-        openProfileModal(row.dataset.userId, row.dataset.username);
+        const user = allCollaboratorsData.find(u => u.id === row.dataset.userId);
+        if (user) openProfileModal(user);
     }
 });
 
@@ -249,18 +276,21 @@ modalProfile.querySelector('.modal-close-btn').addEventListener('click', () => {
     if (evolutionChart) evolutionChart.destroy();
 });
 
-async function openProfileModal(userId, username) {
-    document.getElementById('modal-username').textContent = `Perfil de ${username}`;
-    document.getElementById('btn-save-note').dataset.employeeId = userId;
+async function openProfileModal(user) {
+    document.getElementById('modal-username').textContent = `Perfil de ${user.username}`;
+    document.getElementById('btn-save-note').dataset.employeeId = user.id;
+    
+    // NUEVO: Generar y mostrar la gamificación
+    const suggestion = generateGamificationSuggestion(user);
+    document.getElementById('gamification-suggestion').textContent = suggestion;
+
     modalProfile.classList.remove('hidden');
 
     try {
-        const { data: measurements, error: mError } = await db.from('measurements').select('created_at, combined_score, journal_entry').eq('user_id_uuid', userId).order('created_at', { ascending: true });
-        if (mError) throw mError;
-        
+        const measurements = user.allMeasurements.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         renderEvolutionChart(measurements);
         renderJournalHistory(measurements);
-        await fetchAndRenderHrNotes(userId);
+        await fetchAndRenderHrNotes(user.id);
     } catch (error) {
         console.error("Error al cargar datos del perfil:", error);
     }
@@ -273,10 +303,7 @@ function renderEvolutionChart(measurements) {
     if (evolutionChart) evolutionChart.destroy();
     evolutionChart = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels,
-            datasets: [{ label: 'Índice de Equilibrio', data, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true, tension: 0.3 }]
-        },
+        data: { labels, datasets: [{ label: 'Índice de Equilibrio', data, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true, tension: 0.3 }] },
         options: { scales: { y: { beginAtZero: true, max: 100 } } }
     });
 }
@@ -319,4 +346,4 @@ document.getElementById('btn-save-note').addEventListener('click', async (e) => 
     } catch (error) {
         alert("No se pudo guardar la nota.");
     }
-});// ...
+});
