@@ -34,27 +34,44 @@
         </header>
 
         <main class="dashboard-grid">
-            
             <div class="card" id="priority-list-card">
                 <h3>Lista Prioritaria de Colaboradores</h3>
-                <div class="filters">
-                    </div>
                 <div id="priority-list-container">
                     <p>Cargando datos de colaboradores...</p>
                 </div>
             </div>
-
             <div class="card" id="risk-map-card">
                 <h3>Mapa de Riesgo por Área</h3>
                  <p class="placeholder-text">El mapa de riesgo se construirá en una fase futura.</p>
             </div>
-
             <div class="card" id="general-report-card">
                 <h3>Reporte General</h3>
                 <p class="placeholder-text">Los gráficos de reporte general se construirán en una fase futura.</p>
             </div>
-
         </main>
+    </div>
+
+    <div id="modal-profile" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <h3 id="modal-username"></h3>
+            <div class="profile-grid">
+                <div class="profile-card chart-card">
+                    <h4>Evolución de Bienestar (Últimos 30 días)</h4>
+                    <canvas id="evolution-chart"></canvas>
+                </div>
+                <div class="profile-card">
+                    <h4>Historial de Encuestas ("Cómo me siento")</h4>
+                    <div id="journal-history"></div>
+                </div>
+                <div class="profile-card">
+                    <h4>Notas RRHH (Privado)</h4>
+                    <div id="hr-notes-history"></div>
+                    <textarea id="hr-new-note" placeholder="Añadir nueva nota..."></textarea>
+                    <button id="btn-save-note" class="btn">Guardar Nota</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="./dashboard.js"></script>
