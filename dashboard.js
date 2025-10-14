@@ -12,25 +12,34 @@ const loginMessage = document.getElementById('login-message');
 const priorityListContainer = document.getElementById('priority-list-container');
 
 // --- Lógica de Autenticación ---
+
+// 1. Manejar el envío del formulario de login
 formAdminLogin.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('admin_user').value;
+    e.preventDefault(); // Evita que la página se recargue
+    const username = document.getElementById('admin_user').value.trim();
     const password = document.getElementById('admin_pass').value;
     loginMessage.textContent = 'Ingresando...';
+
+    // CORRECCIÓN: Convertir el nombre de usuario a formato de email que Supabase espera
+    const email = `${username.toLowerCase()}@raizen.app`;
 
     try {
         const { data, error } = await db.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        
     } catch (error) {
         console.error('Error de login:', error.message);
-        loginMessage.textContent = 'Correo o contraseña incorrectos.';
+        loginMessage.textContent = 'Usuario o contraseña incorrectos.';
     }
 });
 
+// 2. Manejar el clic en el botón de cerrar sesión
 btnSignOut.addEventListener('click', async () => {
     await db.auth.signOut();
 });
 
+
+// 3. Función principal que se ejecuta cuando cambia el estado de autenticación
 db.auth.onAuthStateChange((event, session) => {
     if (session && session.user) {
         onLoggedIn(session.user);
@@ -39,14 +48,17 @@ db.auth.onAuthStateChange((event, session) => {
     }
 });
 
+// 4. Función que se ejecuta al iniciar sesión
 function onLoggedIn(user) {
+    console.log('Admin logueado:', user.email);
     screenLogin.classList.remove('active');
     screenDashboard.classList.add('active');
-    // FASE 2: Llamamos a la función para cargar la lista de trabajadores.
-    fetchAndDisplayPriorityList();
+    fetchAndDisplayPriorityList(); 
 }
 
+// 5. Función que se ejecuta al cerrar sesión
 function onLoggedOut() {
+    console.log('Admin cerró sesión.');
     screenDashboard.classList.remove('active');
     screenLogin.classList.add('active');
 }
@@ -58,40 +70,34 @@ async function fetchAndDisplayPriorityList() {
     priorityListContainer.innerHTML = '<p>Cargando datos de colaboradores...</p>';
 
     try {
-        // 1. Obtener todos los perfiles y todas las mediciones.
         const { data: profiles, error: profilesError } = await db.from('profiles').select('*');
         if (profilesError) throw profilesError;
 
         const { data: measurements, error: measurementsError } = await db.from('measurements').select('*');
         if (measurementsError) throw measurementsError;
 
-        // 2. Procesar los datos para combinar perfiles con su última medición.
         const combinedData = profiles.map(profile => {
             const userMeasurements = measurements
                 .filter(m => m.user_id_uuid === profile.id)
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Ordenar por fecha descendente
-
-            const latestMeasurement = userMeasurements[0] || null;
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
             return {
                 ...profile,
-                latestMeasurement
+                latestMeasurement: userMeasurements[0] || null
             };
         });
 
-        // 3. Calcular nivel de riesgo y ordenar la lista.
         const processedData = combinedData.map(user => {
             let riskLevel = 'bajo';
-            let riskScore = 100; // Por defecto, si no hay medición.
+            let riskScore = 100;
             if (user.latestMeasurement) {
                 riskScore = user.latestMeasurement.combined_score;
                 if (riskScore < 40) riskLevel = 'alto';
                 else if (riskScore < 65) riskLevel = 'medio';
             }
             return { ...user, riskLevel, riskScore };
-        }).sort((a, b) => a.riskScore - b.riskScore); // Ordenar por puntaje ascendente (menor es más riesgo)
+        }).sort((a, b) => a.riskScore - b.riskScore);
 
-        // 4. Generar el HTML de la tabla.
         renderPriorityList(processedData);
 
     } catch (error) {
