@@ -3,17 +3,20 @@ const SUPABASE_URL = "https://kdxoxusimqdznduwyvhl.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkeG94dXNpbXFkem5kdXd5dmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MDc4NDgsImV4cCI6MjA3NTQ4Mzg0OH0.sfa5iISRNYwwOQLzkSstWLMAqSRUSKJHCItDkgFkQvc";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// --- Selectores de Elementos ---
+// --- Selectores y Estado Global ---
 const screenLogin = document.getElementById('screenLogin');
 const screenDashboard = document.getElementById('screenDashboard');
 const formAdminLogin = document.getElementById('formAdminLogin');
 const btnSignOut = document.getElementById('btnSignOut');
 const loginMessage = document.getElementById('login-message');
 const priorityListContainer = document.getElementById('priority-list-container');
-const riskMapContainer = document.getElementById('risk-map-container'); // Nuevo selector
+const riskMapContainer = document.getElementById('risk-map-container');
 const modalProfile = document.getElementById('modal-profile');
+const showAllBtn = document.getElementById('show-all-btn');
 
-let evolutionChart = null;
+let evolutionChart, riskDistributionChart, wellbeingTrendChart = null;
+let allCollaboratorsData = []; // Guardaremos todos los datos aquí
+let currentFilter = { department: 'All' };
 
 // --- Lógica de Autenticación ---
 formAdminLogin.addEventListener('submit', async (e) => {
@@ -40,7 +43,7 @@ db.auth.onAuthStateChange((event, session) => {
 function onLoggedIn(user) {
     screenLogin.classList.remove('active');
     screenDashboard.classList.add('active');
-    loadDashboardData(); // Función única para cargar todos los datos
+    loadDashboardData();
 }
 
 function onLoggedOut() {
@@ -48,7 +51,7 @@ function onLoggedOut() {
     screenLogin.classList.add('active');
 }
 
-// --- LÓGICA DE CARGA DE DATOS (REFACTORIZADO) ---
+// --- LÓGICA DE CARGA Y FILTRADO DE DATOS ---
 async function loadDashboardData() {
     priorityListContainer.innerHTML = '<p>Cargando datos...</p>';
     riskMapContainer.innerHTML = '<p>Calculando riesgos...</p>';
@@ -60,22 +63,36 @@ async function loadDashboardData() {
         const { data: measurements, error: measurementsError } = await db.from('measurements').select('*');
         if (measurementsError) throw measurementsError;
 
-        const combinedData = profiles.map(profile => {
+        allCollaboratorsData = profiles.map(profile => {
             const userMeasurements = measurements
                 .filter(m => m.user_id_uuid === profile.id)
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            return { ...profile, latestMeasurement: userMeasurements[0] || null };
+            return { ...profile, allMeasurements: userMeasurements, latestMeasurement: userMeasurements[0] || null };
         });
 
-        // Una vez cargados los datos, renderizamos ambos componentes
-        renderPriorityList(combinedData);
-        renderRiskMap(combinedData);
+        applyFiltersAndRender();
 
     } catch (error) {
         priorityListContainer.innerHTML = `<p class="error-message">No se pudieron cargar los datos.</p>`;
         riskMapContainer.innerHTML = `<p class="error-message">Error al calcular riesgos.</p>`;
     }
 }
+
+function applyFiltersAndRender() {
+    let filteredData = allCollaboratorsData;
+
+    if (currentFilter.department !== 'All') {
+        filteredData = allCollaboratorsData.filter(user => (user.department || 'Sin Área') === currentFilter.department);
+        showAllBtn.classList.remove('hidden');
+    } else {
+        showAllBtn.classList.add('hidden');
+    }
+
+    renderPriorityList(filteredData);
+    renderRiskMap(allCollaboratorsData);
+    renderGeneralReport(allCollaboratorsData);
+}
+
 
 // --- LÓGICA DE RENDERIZADO ---
 
@@ -92,9 +109,10 @@ function renderPriorityList(data) {
     }).sort((a, b) => a.riskScore - b.riskScore);
 
     if (processedData.length === 0) {
-        priorityListContainer.innerHTML = '<p>No hay datos de trabajadores para mostrar.</p>';
+        priorityListContainer.innerHTML = `<p>No hay trabajadores en el área seleccionada.</p>`;
         return;
     }
+
     const tableHTML = `
         <table class="priority-table">
             <thead>
@@ -121,23 +139,18 @@ function renderPriorityList(data) {
     priorityListContainer.innerHTML = tableHTML;
 }
 
-// NUEVO: Función para renderizar el Mapa de Riesgo
 function renderRiskMap(data) {
     const departments = {};
-
     data.forEach(user => {
         const dept = user.department || 'Sin Área';
-        if (!user.latestMeasurement) return; // Omitir usuarios sin mediciones
-
-        if (!departments[dept]) {
-            departments[dept] = { scores: [], userCount: 0 };
-        }
+        if (!user.latestMeasurement) return;
+        if (!departments[dept]) departments[dept] = { scores: [], userCount: 0 };
         departments[dept].scores.push(user.latestMeasurement.combined_score);
         departments[dept].userCount++;
     });
 
     if (Object.keys(departments).length === 0) {
-        riskMapContainer.innerHTML = '<p>No hay datos de departamentos para mostrar.</p>';
+        riskMapContainer.innerHTML = '<p>No hay datos de departamentos.</p>';
         return;
     }
     
@@ -148,23 +161,87 @@ function renderRiskMap(data) {
         if (avgScore < 40) riskLevel = 'alto';
         else if (avgScore < 65) riskLevel = 'medio';
         
-        mapHTML += `
-            <div class="map-area ${'risk-' + riskLevel}">
-                <h4>${deptName}</h4>
-                <p class="score">${Math.round(avgScore)}</p>
-                <p>${departments[deptName].userCount} colaborador(es)</p>
-            </div>
-        `;
+        mapHTML += `<div class="map-area ${'risk-' + riskLevel}" data-department="${deptName}"><h4>${deptName}</h4><p class="score">${Math.round(avgScore)}</p><p>${departments[deptName].userCount} colab.</p></div>`;
     }
     riskMapContainer.innerHTML = mapHTML;
 }
 
-// --- LÓGICA DEL PERFIL INDIVIDUAL ---
+function renderGeneralReport(data) {
+    const riskCounts = { alto: 0, medio: 0, bajo: 0 };
+    const trendData = {};
+
+    data.forEach(user => {
+        if (user.latestMeasurement) {
+            const score = user.latestMeasurement.combined_score;
+            if (score < 40) riskCounts.alto++;
+            else if (score < 65) riskCounts.medio++;
+            else riskCounts.bajo++;
+        }
+        user.allMeasurements.forEach(m => {
+            const date = new Date(m.created_at).toISOString().split('T')[0]; // Agrupar por día
+            if (!trendData[date]) trendData[date] = { scores: [] };
+            trendData[date].scores.push(m.combined_score);
+        });
+    });
+
+    // Gráfico de Distribución de Riesgo
+    const riskCtx = document.getElementById('risk-distribution-chart').getContext('2d');
+    if (riskDistributionChart) riskDistributionChart.destroy();
+    riskDistributionChart = new Chart(riskCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Riesgo Alto', 'Riesgo Medio', 'Riesgo Bajo'],
+            datasets: [{
+                data: [riskCounts.alto, riskCounts.medio, riskCounts.bajo],
+                backgroundColor: ['var(--danger)', 'var(--warning)', 'var(--success)']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Gráfico de Tendencia de Bienestar
+    const trendLabels = Object.keys(trendData).sort((a,b) => new Date(a) - new Date(b));
+    const trendScores = trendLabels.map(label => {
+        const dayData = trendData[label];
+        return dayData.scores.reduce((a,b) => a+b, 0) / dayData.scores.length;
+    });
+    
+    const trendCtx = document.getElementById('wellbeing-trend-chart').getContext('2d');
+    if (wellbeingTrendChart) wellbeingTrendChart.destroy();
+    wellbeingTrendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Bienestar Promedio',
+                data: trendScores,
+                borderColor: 'var(--primary-blue)',
+                tension: 0.1
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+    });
+}
+
+// --- LÓGICA DE INTERACTIVIDAD ---
 priorityListContainer.addEventListener('click', (e) => {
     const row = e.target.closest('tr');
     if (row && row.dataset.userId) {
         openProfileModal(row.dataset.userId, row.dataset.username);
     }
+});
+
+riskMapContainer.addEventListener('click', (e) => {
+    const area = e.target.closest('.map-area');
+    if (area && area.dataset.department) {
+        currentFilter.department = area.dataset.department;
+        applyFiltersAndRender();
+    }
+});
+
+showAllBtn.addEventListener('click', () => {
+    currentFilter.department = 'All';
+    applyFiltersAndRender();
 });
 
 modalProfile.querySelector('.modal-close-btn').addEventListener('click', () => {
@@ -242,4 +319,4 @@ document.getElementById('btn-save-note').addEventListener('click', async (e) => 
     } catch (error) {
         alert("No se pudo guardar la nota.");
     }
-});
+});// ...
