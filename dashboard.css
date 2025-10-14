@@ -1,121 +1,147 @@
 :root {
-    --primary-color: #007BFF;
-    --primary-hover: #0056b3;
-    --background-color: #f0f2f5;
-    --card-background: #ffffff;
-    --text-color: #333;
-    --subtitle-color: #6c757d;
-    --border-color: #dee2e6;
-    --error-color: #dc3545;
-    --success-color: #28a745;
-    --risk-high: #e53e3e;
-    --risk-medium: #f6ad55;
-    --risk-low: #48bb78;
+    --primary-blue: #2563eb;
+    --background: #f8fafc;
+    --card-bg: #ffffff;
+    --text-dark: #1e293b;
+    --text-light: #64748b;
+    --border-color: #e2e8f0;
+    --danger: #dc2626;
+    --warning: #f59e0b;
+    --success: #16a34a;
 }
 
+* { box-sizing: border-box; }
+
 body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--background);
+    color: var(--text-dark);
     margin: 0;
-    font-family: 'Inter', sans-serif;
-    background-color: var(--background-color);
-    color: var(--text-color);
+    padding: 0;
 }
 
 .screen { display: none; }
-.screen.active { display: block; }
+.screen.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* --- Estilos de la Pantalla de Login --- */
+/* --- Estilos del Login --- */
 .login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
-}
-.login-box {
-    background: var(--card-background);
-    padding: 2.5rem 3rem;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    text-align: center;
-    width: 100%;
     max-width: 400px;
-    margin: 1rem;
+    margin: 8rem auto;
+    padding: 2rem;
+    background-color: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    text-align: center;
 }
-.logo { width: 80px; margin-bottom: 1rem; }
-.login-box h2 { margin: 0 0 0.5rem 0; font-size: 1.75rem; font-weight: 700; }
-.subtitle { margin: 0 0 2rem 0; color: var(--subtitle-color); }
-.form-group { margin-bottom: 1.5rem; text-align: left; }
-.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
-.form-group input {
-    width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color);
-    border-radius: 8px; font-size: 1rem; box-sizing: border-box;
-    transition: border-color 0.2s, box-shadow 0.2s;
+.logo { width: 70px; margin-bottom: 1rem; }
+.login-container h1 { margin: 0 0 0.5rem 0; }
+.login-container p { color: var(--text-light); margin-bottom: 2rem; }
+.login-container input {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    font-size: 1rem;
 }
-.form-group input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); }
 .btn {
-    width: 100%; padding: 0.9rem; background-color: var(--primary-color);
-    color: white; border: none; border-radius: 8px; font-size: 1.1rem;
-    font-weight: 600; cursor: pointer; transition: background-color 0.2s;
+    background-color: var(--primary-blue);
+    color: white;
+    width: 100%;
+    padding: 0.9rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
 }
-.btn:hover { background-color: var(--primary-hover); }
-.message { margin-top: 1rem; font-weight: 600; height: 20px; }
-.message.error { color: var(--error-color); }
+.error-message { color: var(--danger); font-size: 0.9rem; height: 1.2rem; }
 
 /* --- Estilos del Dashboard --- */
-#dashboard-screen { display: none; }
-#dashboard-screen.active { display: block; }
-
-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1rem 2rem; background-color: var(--card-background);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    width: 100%; box-sizing: border-box; position: sticky; top: 0; z-index: 10;
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
 }
-.logo-small { height: 40px; }
-header h1 { font-size: 1.5rem; margin: 0; }
-.header-user { display: flex; align-items: center; gap: 1rem; }
-#user-email { font-weight: 600; }
-.btn-secondary { background-color: var(--subtitle-color); width: auto; font-size: 0.9rem; padding: 0.6rem 1.2rem; }
-.btn-secondary:hover { background-color: #555; }
-
-main { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+.btn-secondary {
+    background: none;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+}
 .dashboard-grid {
+    padding: 2rem;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
     gap: 1.5rem;
+    grid-template-columns: 2fr 1fr;
 }
 .card {
-    background: var(--card-background); border-radius: 12px; padding: 1.5rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
 }
-.summary-card { text-align: center; }
-.summary-card h4 { margin: 0 0 1rem 0; color: var(--subtitle-color); font-weight: 600; }
-.main-metric { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
-.score-circle {
-    width: 100px; height: 100px; border-radius: 50%; display: flex;
-    justify-content: center; align-items: center; margin: 0 auto 1rem auto;
-    font-size: 2rem; font-weight: 700; color: white;
-    background: var(--border-color);
-}
-.summary-card p { margin: 0; color: var(--subtitle-color); font-size: 0.9rem; }
-.chart-card { grid-column: 1 / 5; }
-.list-card { grid-column: 1 / 5; }
-.list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-.filters select { padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); }
-.table-container { max-height: 400px; overflow-y: auto; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-th { font-weight: 600; color: var(--subtitle-color); }
-.risk-bar { width: 100px; height: 10px; border-radius: 5px; background-color: #e2e8f0; }
-.risk-bar-fill { height: 100%; border-radius: 5px; }
-.risk-high { background-color: var(--risk-high); }
-.risk-medium { background-color: var(--risk-medium); }
-.risk-low { background-color: var(--risk-low); }
+.card h3 { margin-top: 0; }
+#priority-list-card { grid-column: 1 / 3; } /* Ocupa todo el ancho por ahora */
 
-@media (max-width: 1200px) {
-    .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+
+/* --- Estilos de la Tabla Prioritaria (NUEVO) --- */
+.priority-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
 }
-@media (max-width: 768px) {
-    .dashboard-grid { grid-template-columns: 1fr; }
-    header { flex-direction: column; gap: 1rem; }
+.priority-table th, .priority-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
 }
+.priority-table th {
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+.priority-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.priority-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+.risk-bar-container {
+    width: 100px;
+    height: 10px;
+    background-color: #e2e8f0;
+    border-radius: 99px;
+    overflow: hidden;
+}
+.risk-bar {
+    height: 100%;
+    border-radius: 99px;
+}
+.risk-bar.bajo { background-color: var(--success); }
+.risk-bar.medio { background-color: var(--warning); }
+.risk-bar.alto { background-color: var(--danger); }
+
+.contact-icons span {
+    font-size: 1.2rem;
+    margin-right: 0.8rem;
+    color: var(--text-light);
+    cursor: pointer;
+}
+
+/* Estilos para el toggle de contacto */
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
+input:checked + .slider { background-color: var(--primary-blue); }
+input:checked + .slider:before { transform: translateX(20px); }
+.slider.round { border-radius: 34px; }
+.slider.round:before { border-radius: 50%; }
