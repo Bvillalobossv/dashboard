@@ -786,7 +786,7 @@ if (liaAssistantForm) {
 
 // URL del backend que conecta con OpenAI (Render)
 const LIA_ASSISTANT_API_URL =
-  "hhttps://lia-backend-idhc.onrender.com"; // ⬅️ reemplaza por tu endpoint real
+  "https://lia-backend-idhc.onrender.com/api/employer-assistant"; // ⬅️ reemplaza por tu endpoint real
 
 async function callLiaAssistantApi(conversation) {
   const response = await fetch(LIA_ASSISTANT_API_URL, {
