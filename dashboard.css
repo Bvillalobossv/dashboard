@@ -150,6 +150,17 @@ body {
   top: 0;
   z-index: 10;
 }
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-logo-img {
+  height: 28px;   /* tamaño pequeñito del logo */
+  width: auto;
+  display: block;
+}
 
 .logo-text-header {
   margin: 0;
