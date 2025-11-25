@@ -59,17 +59,18 @@ body {
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
   text-align: center;
 }
-/* Logo Lia en el login */
+
+/* Logo grande del login */
 .logo-wrapper {
   margin-bottom: 1.5rem;
 }
 
 .logo-img {
-  max-width: 140px;   /* ancho máximo del logo dentro de la tarjeta */
+  max-width: 140px;
   width: 100%;
   height: auto;
   display: block;
-  margin: 0 auto;     /* centrado horizontal */
+  margin: 0 auto;
 }
 
 .logo-text {
@@ -150,28 +151,22 @@ body {
   top: 0;
   z-index: 10;
 }
+
+/* Logo pequeño + texto */
 .header-left {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-/* 🔽 Logo MUCHO más pequeño en el header */
 .header-logo-img {
-  max-width: 110px;   /* prueba con 80–110 según lo que te guste */
+  max-width: 110px;
   height: auto;
   display: block;
 }
 
-.logo-text-header {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #70755d;
-}
-
 .header-subtitle {
-  margin: 0.25rem 0 0;
+  margin: 0;
   font-size: 0.85rem;
   color: var(--text-light);
 }
@@ -527,8 +522,191 @@ body {
   color: var(--primary-blue);
 }
 
-/* Responsive */
-@media (max-width: 960px) {
+/* === Asistente Lia (empleador) === */
+
+.lia-assistant {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 60;
+}
+
+/* Botón flotante circular */
+.lia-assistant-button {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: #0f172a;
+  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.lia-assistant-button:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.55);
+  background-color: #111827;
+}
+
+.lia-assistant-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+}
+
+/* Panel de chat */
+.lia-assistant-panel {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: 380px;
+  max-height: 70vh;
+  background-color: #f9fafb;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header del panel */
+.lia-assistant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background-color: #0f172a;
+  color: #e5e7eb;
+}
+
+.lia-assistant-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.lia-assistant-avatar-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background-color: #f9fafb;
+}
+
+.lia-assistant-title {
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.lia-assistant-subtitle {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.lia-assistant-close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+/* Área de mensajes */
+.lia-assistant-messages {
+  padding: 0.9rem 1rem;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* Burbujas */
+.lia-msg {
+  max-width: 85%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 14px;
+  line-height: 1.35;
+}
+
+.lia-msg-user {
+  align-self: flex-end;
+  background-color: #2563eb;
+  color: #eff6ff;
+  border-bottom-right-radius: 3px;
+}
+
+.lia-msg-assistant {
+  align-self: flex-start;
+  background-color: #e5e7eb;
+  color: #111827;
+  border-bottom-left-radius: 3px;
+}
+
+/* Formulario de entrada */
+.lia-assistant-form {
+  border-top: 1px solid #e5e7eb;
+  padding: 0.6rem 0.7rem 0.7rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.lia-assistant-form textarea {
+  flex: 1;
+  resize: none;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.lia-assistant-form textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+}
+
+.lia-assistant-send {
+  border: none;
+  border-radius: 999px;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background-color: #2563eb;
+  color: #f9fafb;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lia-assistant-send[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Responsive: panel más pequeño en móviles */
+@media (max-width: 600px) {
+  .login-container {
+    margin: 4rem 1rem;
+  }
+
+  .main-header {
+    padding-inline: 1.25rem;
+  }
+
+  .dashboard-grid {
+    padding-inline: 1.25rem;
+  }
+
+  .modal-content {
+    padding-inline: 1.25rem;
+  }
+
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -553,22 +731,10 @@ body {
   .filter-control {
     flex: 1;
   }
-}
 
-@media (max-width: 600px) {
-  .login-container {
-    margin: 4rem 1rem;
-  }
-
-  .main-header {
-    padding-inline: 1.25rem;
-  }
-
-  .dashboard-grid {
-    padding-inline: 1.25rem;
-  }
-
-  .modal-content {
-    padding-inline: 1.25rem;
+  .lia-assistant-panel {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    width: calc(100% - 1.5rem);
   }
 }

@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -7,7 +7,7 @@
     content="width=device-width, initial-scale=1.0"
   />
   <title>Lia · Dashboard de equipos</title>
-  <link rel="stylesheet" href="dashboard.css?v=2.0" />
+  <link rel="stylesheet" href="dashboard.css?v=2.1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     rel="preconnect"
@@ -160,9 +160,47 @@
     </div>
   </div>
 
+  <!-- Asistente de gamificación para el empleador -->
+  <div id="lia-assistant" class="lia-assistant hidden">
+    <!-- Botón flotante -->
+    <button id="lia-assistant-toggle" class="lia-assistant-button" type="button">
+      <img src="./lia-assistant.png" alt="Asistente Lia" class="lia-assistant-avatar" />
+    </button>
+
+    <!-- Panel de chat -->
+    <div id="lia-assistant-panel" class="lia-assistant-panel hidden">
+      <header class="lia-assistant-header">
+        <div class="lia-assistant-header-left">
+          <img src="./lia-assistant.png" alt="Asistente Lia" class="lia-assistant-avatar-small" />
+          <div>
+            <div class="lia-assistant-title">Lia Coach</div>
+            <div class="lia-assistant-subtitle">
+              Asistente de gamificación para tus equipos.
+            </div>
+          </div>
+        </div>
+        <button id="lia-assistant-close" class="lia-assistant-close" type="button">×</button>
+      </header>
+
+      <div id="lia-assistant-messages" class="lia-assistant-messages">
+        <!-- mensajes se llenan por JS -->
+      </div>
+
+      <form id="lia-assistant-form" class="lia-assistant-form">
+        <textarea
+          id="lia-assistant-input"
+          rows="2"
+          placeholder="Pregúntame cómo gamificar un equipo, qué acciones tomar o cómo interpretar un resultado…"
+          required
+        ></textarea>
+        <button type="submit" class="lia-assistant-send">Enviar</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Librerías y lógica del dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="./dashboard.js?v=2.0"></script>
+  <script src="./dashboard.js?v=2.1"></script>
 </body>
 </html>

@@ -4,8 +4,8 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- Parámetros de Lia ---
-const ADMIN_LOGIN_DOMAIN = "lia.app"; // Cambia si usas otro dominio para los admins
-const TEAM_FIELD = "department";       // Cambia si tu columna en 'profiles' se llama distinto
+const ADMIN_LOGIN_DOMAIN = "lia.app"; // Cambia si usas otro dominio para los admins (sólo si usas el patrón usuario@dominio)
+const TEAM_FIELD = "department";      // Usamos la columna 'department' como "equipo"
 
 // --- Selectores y estado global ---
 const screenLogin = document.getElementById("screenLogin");
@@ -39,6 +39,18 @@ let allCollaboratorsData = [];  // perfiles + mediciones por persona
 let teamsData = [];             // datos agregados por equipo
 let currentFilter = { department: "All", risk: "All" };
 
+// === Asistente Lia (gamificación) – elementos ===
+const liaAssistantContainer = document.getElementById("lia-assistant");
+const liaAssistantToggle = document.getElementById("lia-assistant-toggle");
+const liaAssistantPanel = document.getElementById("lia-assistant-panel");
+const liaAssistantClose = document.getElementById("lia-assistant-close");
+const liaAssistantMessages = document.getElementById("lia-assistant-messages");
+const liaAssistantForm = document.getElementById("lia-assistant-form");
+const liaAssistantInput = document.getElementById("lia-assistant-input");
+
+// Historial del asistente en frontend
+let liaConversation = [];
+
 // --- Autenticación ---
 formAdminLogin.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -46,7 +58,11 @@ formAdminLogin.addEventListener("submit", async (e) => {
   const password = document.getElementById("admin_pass").value;
   loginMessage.textContent = "Ingresando...";
 
+  // Si quieres que el usuario sea tipo "admin" y se arme admin@lia.app:
   const email = `${username.toLowerCase()}@${ADMIN_LOGIN_DOMAIN}`;
+
+  // Si prefieres que el usuario escriba el mail completo, usa:
+  // const email = username.toLowerCase();
 
   try {
     const { error } = await db.auth.signInWithPassword({ email, password });
@@ -70,12 +86,15 @@ db.auth.onAuthStateChange((event, session) => {
 function onLoggedIn() {
   screenLogin.classList.remove("active");
   screenDashboard.classList.add("active");
+  if (liaAssistantContainer) liaAssistantContainer.classList.remove("hidden");
+  initLiaAssistantWelcome();
   loadDashboardData();
 }
 
 function onLoggedOut() {
   screenDashboard.classList.remove("active");
   screenLogin.classList.add("active");
+  if (liaAssistantContainer) liaAssistantContainer.classList.add("hidden");
 }
 
 // --- Carga principal de datos ---
@@ -101,7 +120,8 @@ async function loadDashboardData() {
       const userMeasurements = measurements
         .filter((m) => m.user_id_uuid === profile.id)
         .sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
       return {
@@ -307,10 +327,7 @@ function applyFiltersAndRender() {
     );
   }
 
-  if (
-    currentFilter.department !== "All" ||
-    currentFilter.risk !== "All"
-  ) {
+  if (currentFilter.department !== "All" || currentFilter.risk !== "All") {
     showAllBtn.classList.remove("hidden");
   } else {
     showAllBtn.classList.add("hidden");
@@ -393,7 +410,7 @@ function renderPriorityList(teams) {
   priorityListContainer.innerHTML = html;
 }
 
-// --- Render mapa de riesgo por área (usando equipos) ---
+// --- Render mapa de riesgo por área ---
 function renderRiskMap(teams) {
   const departments = {};
 
@@ -669,7 +686,7 @@ function renderTeamDistributionChart(team) {
   });
 }
 
-// --- Sugerencias de acciones para el equipo (placeholder para futura IA) ---
+// --- Sugerencias de acciones para el equipo (placeholder local) ---
 function generateTeamGamificationSuggestion(team) {
   const m = team.metrics;
   if (m.avgScore == null) {
@@ -689,4 +706,101 @@ function generateTeamGamificationSuggestion(team) {
 
   // Riesgo bajo
   return "Equipo en riesgo bajo: mantén y celebra las buenas prácticas. Puedes probar dinámicas de gamificación (desafíos de bienestar, reconocimiento entre pares) para seguir fortaleciendo el clima.";
+}
+
+// === Asistente Lia: UI y lógica de chat ===
+
+// Iniciar mensaje de bienvenida
+function initLiaAssistantWelcome() {
+  if (!liaAssistantMessages) return;
+  liaConversation = [];
+  liaAssistantMessages.innerHTML = "";
+
+  addAssistantMessage(
+    "Hola, soy <b>Lia Coach</b>. Puedo ayudarte con ideas de gamificación, acciones concretas para tus equipos según su nivel de bienestar, y cómo interpretar los datos del dashboard. ¿Sobre qué equipo o situación quieres hablar?"
+  );
+}
+
+function addUserMessage(text) {
+  const div = document.createElement("div");
+  div.className = "lia-msg lia-msg-user";
+  div.innerHTML = text;
+  liaAssistantMessages.appendChild(div);
+  liaAssistantMessages.scrollTop = liaAssistantMessages.scrollHeight;
+}
+
+function addAssistantMessage(text) {
+  const div = document.createElement("div");
+  div.className = "lia-msg lia-msg-assistant";
+  div.innerHTML = text;
+  liaAssistantMessages.appendChild(div);
+  liaAssistantMessages.scrollTop = liaAssistantMessages.scrollHeight;
+}
+
+// Mostrar / ocultar panel
+if (liaAssistantToggle && liaAssistantPanel && liaAssistantClose) {
+  liaAssistantToggle.addEventListener("click", () => {
+    liaAssistantPanel.classList.toggle("hidden");
+  });
+
+  liaAssistantClose.addEventListener("click", () => {
+    liaAssistantPanel.classList.add("hidden");
+  });
+}
+
+// Manejo del formulario de chat
+if (liaAssistantForm) {
+  liaAssistantForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = liaAssistantInput.value.trim();
+    if (!text) return;
+
+    // Añadir mensaje del usuario
+    addUserMessage(text);
+    liaConversation.push({ role: "user", content: text });
+    liaAssistantInput.value = "";
+    liaAssistantInput.focus();
+
+    // Bloquear mientras responde
+    const sendButton = liaAssistantForm.querySelector(".lia-assistant-send");
+    sendButton.disabled = true;
+    addAssistantMessage("Pensando…");
+
+    try {
+      const reply = await callLiaAssistantApi(liaConversation);
+      // Borramos el "Pensando…" (último mensaje asistente temporal)
+      liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
+      addAssistantMessage(reply);
+      liaConversation.push({ role: "assistant", content: reply });
+    } catch (error) {
+      console.error(error);
+      liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
+      addAssistantMessage(
+        "Lo siento, tuve un problema al conectar con la IA. Intenta de nuevo en un momento."
+      );
+    } finally {
+      sendButton.disabled = false;
+    }
+  });
+}
+
+// URL del backend que conecta con OpenAI (Render)
+const LIA_ASSISTANT_API_URL =
+  "hhttps://lia-backend-idhc.onrender.com"; // ⬅️ reemplaza por tu endpoint real
+
+async function callLiaAssistantApi(conversation) {
+  const response = await fetch(LIA_ASSISTANT_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ messages: conversation }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Error en la llamada a Lia Coach");
+  }
+
+  const data = await response.json();
+  return data.reply;
 }
