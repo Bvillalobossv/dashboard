@@ -59,6 +59,18 @@ body {
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
   text-align: center;
 }
+/* Logo Lia en el login */
+.logo-wrapper {
+  margin-bottom: 1.5rem;
+}
+
+.logo-img {
+  max-width: 140px;   /* ancho máximo del logo dentro de la tarjeta */
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;     /* centrado horizontal */
+}
 
 .logo-text {
   font-weight: 700;
