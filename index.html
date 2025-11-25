@@ -1,99 +1,163 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard RRHH - RaiZen</title>
-    <link rel="stylesheet" href="dashboard.css?v=1.3">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>Lia · Dashboard de equipos</title>
+  <link rel="stylesheet" href="dashboard.css?v=2.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
 </head>
 <body>
+  <!-- Pantalla de login -->
+  <div id="screenLogin" class="screen active">
+    <div class="login-container">
+      <h1 class="logo-text">Lia</h1>
+      <h2>Dashboard de equipos</h2>
+      <p>
+        Acceso exclusivo para el equipo de Personas / RRHH y líderes de
+        la organización.
+      </p>
 
-    <div id="screenLogin" class="screen active">
-        <div class="login-container">
-            <h1 class="logo-text">RaiZen</h1>
-            <h2>Inicio de Sesión del Empleador</h2>
-            <p>Acceso exclusivo para el equipo de RRHH.</p>
-            <form id="formAdminLogin">
-                <input id="admin_user" type="text" placeholder="Nombre de Usuario" required>
-                <input id="admin_pass" type="password" placeholder="Contraseña" required>
-                <button type="submit" class="btn">Ingresar</button>
-            </form>
-            <p id="login-message" class="error-message"></p>
+      <form id="formAdminLogin">
+        <input
+          id="admin_user"
+          type="text"
+          placeholder="Usuario"
+          required
+        />
+        <input
+          id="admin_pass"
+          type="password"
+          placeholder="Contraseña"
+          required
+        />
+        <button type="submit" class="btn">Ingresar</button>
+      </form>
+      <p id="login-message" class="error-message"></p>
+    </div>
+  </div>
+
+  <!-- Pantalla principal del dashboard -->
+  <div id="screenDashboard" class="screen">
+    <header class="main-header">
+      <div>
+        <h2 class="logo-text-header">Lia</h2>
+        <p class="header-subtitle">
+          Vista general del bienestar y riesgo por equipos.
+        </p>
+      </div>
+      <button id="btnSignOut" class="btn-secondary">
+        Cerrar sesión
+      </button>
+    </header>
+
+    <main class="dashboard-grid">
+      <!-- Card: tabla de equipos y prioridades -->
+      <section class="card" id="priority-list-card">
+        <div class="card-header">
+          <div>
+            <h3>Equipos y prioridades</h3>
+            <p class="card-subtitle">
+              Equipos ordenados desde mayor a menor riesgo (score más bajo).
+              Haz clic en un equipo para ver su detalle.
+            </p>
+          </div>
+          <div class="filters">
+            <div class="filter-control">
+              <label for="department-filter">Área</label>
+              <select id="department-filter"></select>
+            </div>
+            <div class="filter-control">
+              <label for="risk-filter">Riesgo</label>
+              <select id="risk-filter">
+                <option value="All">Todos</option>
+                <option value="alto">Alto</option>
+                <option value="medio">Medio</option>
+                <option value="bajo">Bajo</option>
+              </select>
+            </div>
+            <button id="show-all-btn" class="btn-filter hidden">
+              Quitar filtros
+            </button>
+          </div>
         </div>
-    </div>
 
-    <div id="screenDashboard" class="screen">
-        <header class="main-header">
-            <h2 class="logo-text-header">RaiZen</h2>
-            <button id="btnSignOut" class="btn-secondary">Cerrar Sesión</button>
-        </header>
-
-        <main class="dashboard-grid">
-            <div class="card" id="priority-list-card">
-                <h3>Lista Prioritaria de Colaboradores</h3>
-                <div class="filters">
-                    <button id="show-all-btn" class="btn-filter hidden">Mostrar Todos</button>
-                </div>
-                <div id="priority-list-container">
-                    <p>Cargando datos de colaboradores...</p>
-                </div>
-            </div>
-
-            <div class="card" id="risk-map-card">
-                <h3>Mapa de Riesgo por Área</h3>
-                <div id="risk-map-container">
-                    <p class="placeholder-text">Calculando el riesgo por áreas...</p>
-                </div>
-            </div>
-
-            <div class="card" id="general-report-card">
-                <h3>Reporte General</h3>
-                <div class="report-grid">
-                    <div class="chart-container">
-                        <h4>Distribución de Riesgo</h4>
-                        <canvas id="risk-distribution-chart"></canvas>
-                    </div>
-                    <div class="chart-container">
-                        <h4>Tendencia de Bienestar</h4>
-                        <canvas id="wellbeing-trend-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <div id="modal-profile" class="modal-overlay hidden">
-        <div class="modal-content">
-            <button class="modal-close-btn">&times;</button>
-            <h3 id="modal-username"></h3>
-            <div class="profile-grid">
-                <div class="profile-card chart-card">
-                    <h4>Evolución de Bienestar (Últimos 30 días)</h4>
-                    <canvas id="evolution-chart"></canvas>
-                </div>
-                <div class="profile-card gamification-card">
-                    <h4>Sugerencia de Gamificación</h4>
-                    <p id="gamification-suggestion"></p>
-                </div>
-                <div class="profile-card">
-                    <h4>Historial de Encuestas ("Cómo me siento")</h4>
-                    <div id="journal-history"></div>
-                </div>
-                <div class="profile-card">
-                    <h4>Notas RRHH (Privado)</h4>
-                    <div id="hr-notes-history"></div>
-                    <textarea id="hr-new-note" placeholder="Añadir nueva nota..."></textarea>
-                    <button id="btn-save-note" class="btn">Guardar Nota</button>
-                </div>
-            </div>
+        <div id="priority-list-container">
+          <p>Cargando equipos...</p>
         </div>
+      </section>
+
+      <!-- Card: mapa de riesgo por área -->
+      <section class="card" id="risk-map-card">
+        <h3>Mapa de riesgo por área</h3>
+        <p class="card-subtitle">
+          Promedio de bienestar por área considerando todos los equipos.
+        </p>
+        <div id="risk-map-container">
+          <p class="placeholder-text">
+            Calculando el riesgo por áreas...
+          </p>
+        </div>
+      </section>
+
+      <!-- Card: reporte general -->
+      <section class="card" id="general-report-card">
+        <h3>Reporte general</h3>
+        <div class="report-grid">
+          <div class="chart-container">
+            <h4>Equipos por nivel de riesgo</h4>
+            <canvas id="risk-distribution-chart"></canvas>
+          </div>
+          <div class="chart-container">
+            <h4>Tendencia global de bienestar</h4>
+            <canvas id="wellbeing-trend-chart"></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal de detalle de equipo -->
+  <div id="modal-profile" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close-btn" type="button">&times;</button>
+      <h3 id="modal-username"></h3>
+      <p id="modal-meta" class="modal-meta"></p>
+
+      <div class="profile-grid">
+        <div class="profile-card chart-card">
+          <h4>Evolución del bienestar del equipo</h4>
+          <canvas id="team-evolution-chart"></canvas>
+        </div>
+
+        <div class="profile-card">
+          <h4>Distribución de riesgo dentro del equipo</h4>
+          <canvas id="team-distribution-chart"></canvas>
+        </div>
+
+        <div class="profile-card gamification-card">
+          <h4>Ideas de acciones para este equipo</h4>
+          <p id="gamification-suggestion"></p>
+        </div>
+      </div>
     </div>
-    
-    <script src="./dashboard.js?v=1.3"></script>
+  </div>
+
+  <!-- Librerías y lógica del dashboard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="./dashboard.js?v=2.0"></script>
 </body>
 </html>
