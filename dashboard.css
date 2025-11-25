@@ -156,9 +156,10 @@ body {
   gap: 0.75rem;
 }
 
+/* 🔽 Logo MUCHO más pequeño en el header */
 .header-logo-img {
-  height: 28px;   /* tamaño pequeñito del logo */
-  width: auto;
+  max-width: 110px;   /* prueba con 80–110 según lo que te guste */
+  height: auto;
   display: block;
 }
 
