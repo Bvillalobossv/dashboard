@@ -771,6 +771,7 @@ function addAssistantMessage(text) {
 }
 
 // Mostrar / ocultar panel
+// Mostrar / ocultar panel
 if (liaAssistantToggle && liaAssistantPanel && liaAssistantClose) {
   liaAssistantToggle.addEventListener("click", () => {
     liaAssistantPanel.classList.toggle("hidden");
@@ -782,51 +783,57 @@ if (liaAssistantToggle && liaAssistantPanel && liaAssistantClose) {
 }
 
 // Manejo del formulario de chat
-if (liaAssistantForm) {
-liaAssistantForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = liaAssistantInput.value.trim();
-  if (!text) return;
+if (liaAssistantForm && liaAssistantInput && liaAssistantMessages) {
+  liaAssistantForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = liaAssistantInput.value.trim();
+    if (!text) return;
 
-  // Añadir mensaje del usuario
-  addUserMessage(text);
-  liaConversation.push({ role: "user", content: text });
-  liaAssistantInput.value = "";
-  liaAssistantInput.focus();
+    // Añadir mensaje del usuario
+    addUserMessage(text);
+    liaConversation.push({ role: "user", content: text });
+    liaAssistantInput.value = "";
+    liaAssistantInput.focus();
 
-  // Bloquear mientras responde
-  const sendButton = liaAssistantForm.querySelector(".lia-assistant-send");
-  sendButton.disabled = true;
-  addAssistantMessage("Pensando…");
+    // Bloquear mientras responde
+    const sendButton = liaAssistantForm.querySelector(".lia-assistant-send");
+    if (sendButton) sendButton.disabled = true;
+    addAssistantMessage("Pensando…");
 
-  try {
-    // ⬇️ Pasamos también el equipo actual al backend
-    const reply = await callLiaAssistantApi(
-      liaConversation,
-      currentTeamForAssistant
-    );
+    try {
+      // ⬇️ Pasamos también el equipo actual al backend
+      const reply = await callLiaAssistantApi(
+        liaConversation,
+        currentTeamForAssistant
+      );
 
-    // Borramos el "Pensando…" (último mensaje asistente temporal)
-    liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
-    addAssistantMessage(reply);
-    liaConversation.push({ role: "assistant", content: reply });
-  } catch (error) {
-    console.error(error);
-    liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
-    addAssistantMessage(
-      "Lo siento, tuve un problema al conectar con la IA. Intenta de nuevo en un momento."
-    );
-  } finally {
-    sendButton.disabled = false;
-  }
-});
+      // Borramos el "Pensando…" (último mensaje asistente temporal)
+      if (liaAssistantMessages.lastChild) {
+        liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
+      }
+      addAssistantMessage(reply);
+      liaConversation.push({ role: "assistant", content: reply });
+    } catch (error) {
+      console.error(error);
+      if (liaAssistantMessages.lastChild) {
+        liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
+      }
+      addAssistantMessage(
+        "Lo siento, tuve un problema al conectar con la IA. Intenta de nuevo en un momento."
+      );
+    } finally {
+      if (sendButton) sendButton.disabled = false;
+    }
+  });
+}
+
 // === Llamada a Lia Coach en el backend ===
 async function callLiaAssistantApi(conversation, teamName) {
   const response = await fetch(LIA_ASSISTANT_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-    },
+    }
     body: JSON.stringify({
       messages: conversation,
       teamName: teamName || null, // ej: "Ventas", "Operaciones"
