@@ -3,9 +3,19 @@ const SUPABASE_URL = "https://kdxoxusimqdznduwyvhl.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkeG94dXNpbXFkem5kdXd5dmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MDc4NDgsImV4cCI6MjA3NTQ4Mzg0OH0.sfa5iISRNYwwOQLzkSstWLMAqSRUSKJHCItDkgFkQvc";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// --- Backend Lia Coach (IA) ---
+// Usa localhost en desarrollo y Render en producción
+const API_BASE_URL =
+  window.location.hostname.includes("localhost")
+    ? "http://localhost:3000"
+    : "https://lia-backend-idhc.onrender.com";
+
+const LIA_ASSISTANT_API_URL = `${API_BASE_URL}/api/employer-assistant`;
+
 // --- Parámetros de Lia ---
-const ADMIN_LOGIN_DOMAIN = "lia.app"; // Cambia si usas otro dominio para los admins (sólo si usas el patrón usuario@dominio)
-const TEAM_FIELD = "department";      // Usamos la columna 'department' como "equipo"
+const ADMIN_LOGIN_DOMAIN = "lia.app"; // si cambias el patrón de login admin, ajústalo
+const TEAM_FIELD = "department";      // usamos 'department' como nombre de equipo
+
 
 // --- Selectores y estado global ---
 const screenLogin = document.getElementById("screenLogin");
@@ -38,6 +48,10 @@ let wellbeingTrendChart = null;
 let allCollaboratorsData = [];  // perfiles + mediciones por persona
 let teamsData = [];             // datos agregados por equipo
 let currentFilter = { department: "All", risk: "All" };
+
+// Equipo actual sobre el que Lia Coach debería responder
+let currentTeamForAssistant = null;
+
 
 // === Asistente Lia (gamificación) – elementos ===
 const liaAssistantContainer = document.getElementById("lia-assistant");
@@ -554,11 +568,17 @@ priorityListContainer.addEventListener("click", (e) => {
 riskMapContainer.addEventListener("click", (e) => {
   const area = e.target.closest(".map-area");
   if (area && area.dataset.department) {
-    currentFilter.department = area.dataset.department;
-    departmentFilter.value = area.dataset.department;
+    const dept = area.dataset.department;
+
+    currentFilter.department = dept;
+    departmentFilter.value = dept;
+    currentTeamForAssistant = dept; // Lia Coach ahora mira este equipo
+
     applyFiltersAndRender();
+    initLiaAssistantWelcome(); // refresca el mensaje de bienvenida del chat
   }
 });
+
 
 modalCloseBtn.addEventListener("click", () => {
   modalProfile.classList.add("hidden");
@@ -573,6 +593,9 @@ modalCloseBtn.addEventListener("click", () => {
 });
 
 function openTeamModal(team) {
+  // Lia Coach se centrará en este equipo por defecto
+  currentTeamForAssistant = team.teamName;
+
   const m = team.metrics;
   modalTitle.textContent = `Equipo: ${team.teamName}`;
   const lastDate =
@@ -592,7 +615,11 @@ function openTeamModal(team) {
   renderTeamDistributionChart(team);
 
   modalProfile.classList.remove("hidden");
+
+  // Actualizamos el mensaje de bienvenida del chat según el equipo
+  initLiaAssistantWelcome();
 }
+
 
 function renderTeamEvolutionChart(team) {
   const byDate = {};
@@ -716,10 +743,16 @@ function initLiaAssistantWelcome() {
   liaConversation = [];
   liaAssistantMessages.innerHTML = "";
 
-  addAssistantMessage(
-    "Hola, soy <b>Lia Coach</b>. Puedo ayudarte con ideas de gamificación, acciones concretas para tus equipos según su nivel de bienestar, y cómo interpretar los datos del dashboard. ¿Sobre qué equipo o situación quieres hablar?"
-  );
+  const baseText =
+    "Hola, soy <b>Lia Coach</b>. Te ayudo con lecturas rápidas de riesgo del equipo y acciones de gamificación basadas en los datos del dashboard.";
+
+  const teamPart = currentTeamForAssistant
+    ? ` Ahora mismo estoy mirando el equipo <b>${currentTeamForAssistant}</b>. Puedes preguntarme, por ejemplo: “¿Cómo ha estado este equipo esta semana?”`
+    : " Puedes preguntarme, por ejemplo: “¿Cómo ha estado el equipo de Ventas esta semana?”";
+
+  addAssistantMessage(baseText + teamPart);
 }
+
 
 function addUserMessage(text) {
   const div = document.createElement("div");
@@ -750,51 +783,54 @@ if (liaAssistantToggle && liaAssistantPanel && liaAssistantClose) {
 
 // Manejo del formulario de chat
 if (liaAssistantForm) {
-  liaAssistantForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const text = liaAssistantInput.value.trim();
-    if (!text) return;
+liaAssistantForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = liaAssistantInput.value.trim();
+  if (!text) return;
 
-    // Añadir mensaje del usuario
-    addUserMessage(text);
-    liaConversation.push({ role: "user", content: text });
-    liaAssistantInput.value = "";
-    liaAssistantInput.focus();
+  // Añadir mensaje del usuario
+  addUserMessage(text);
+  liaConversation.push({ role: "user", content: text });
+  liaAssistantInput.value = "";
+  liaAssistantInput.focus();
 
-    // Bloquear mientras responde
-    const sendButton = liaAssistantForm.querySelector(".lia-assistant-send");
-    sendButton.disabled = true;
-    addAssistantMessage("Pensando…");
+  // Bloquear mientras responde
+  const sendButton = liaAssistantForm.querySelector(".lia-assistant-send");
+  sendButton.disabled = true;
+  addAssistantMessage("Pensando…");
 
-    try {
-      const reply = await callLiaAssistantApi(liaConversation);
-      // Borramos el "Pensando…" (último mensaje asistente temporal)
-      liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
-      addAssistantMessage(reply);
-      liaConversation.push({ role: "assistant", content: reply });
-    } catch (error) {
-      console.error(error);
-      liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
-      addAssistantMessage(
-        "Lo siento, tuve un problema al conectar con la IA. Intenta de nuevo en un momento."
-      );
-    } finally {
-      sendButton.disabled = false;
-    }
-  });
-}
+  try {
+    // ⬇️ Pasamos también el equipo actual al backend
+    const reply = await callLiaAssistantApi(
+      liaConversation,
+      currentTeamForAssistant
+    );
 
-// URL del backend que conecta con OpenAI (Render)
-const LIA_ASSISTANT_API_URL =
-  "https://lia-backend-idhc.onrender.com/api/employer-assistant"; // ⬅️ reemplaza por tu endpoint real
-
-async function callLiaAssistantApi(conversation) {
+    // Borramos el "Pensando…" (último mensaje asistente temporal)
+    liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
+    addAssistantMessage(reply);
+    liaConversation.push({ role: "assistant", content: reply });
+  } catch (error) {
+    console.error(error);
+    liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
+    addAssistantMessage(
+      "Lo siento, tuve un problema al conectar con la IA. Intenta de nuevo en un momento."
+    );
+  } finally {
+    sendButton.disabled = false;
+  }
+});
+// === Llamada a Lia Coach en el backend ===
+async function callLiaAssistantApi(conversation, teamName) {
   const response = await fetch(LIA_ASSISTANT_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ messages: conversation }),
+    body: JSON.stringify({
+      messages: conversation,
+      teamName: teamName || null, // ej: "Ventas", "Operaciones"
+    }),
   });
 
   if (!response.ok) {
@@ -802,5 +838,6 @@ async function callLiaAssistantApi(conversation) {
   }
 
   const data = await response.json();
+  // el backend devuelve { reply: "texto corto con diagnóstico + bullets" }
   return data.reply;
 }
