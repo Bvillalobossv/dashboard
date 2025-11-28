@@ -771,7 +771,6 @@ function addAssistantMessage(text) {
 }
 
 // Mostrar / ocultar panel
-// Mostrar / ocultar panel
 if (liaAssistantToggle && liaAssistantPanel && liaAssistantClose) {
   liaAssistantToggle.addEventListener("click", () => {
     liaAssistantPanel.classList.toggle("hidden");
@@ -811,6 +810,7 @@ if (liaAssistantForm && liaAssistantInput && liaAssistantMessages) {
       if (liaAssistantMessages.lastChild) {
         liaAssistantMessages.removeChild(liaAssistantMessages.lastChild);
       }
+
       addAssistantMessage(reply);
       liaConversation.push({ role: "assistant", content: reply });
     } catch (error) {
@@ -833,7 +833,7 @@ async function callLiaAssistantApi(conversation, teamName) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-    }
+    },
     body: JSON.stringify({
       messages: conversation,
       teamName: teamName || null, // ej: "Ventas", "Operaciones"
